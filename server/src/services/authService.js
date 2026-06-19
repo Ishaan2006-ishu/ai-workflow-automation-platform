@@ -85,3 +85,101 @@ const registerUser = async (name, email, password) => {
 };
 
 module.exports = { registerUser };
+
+// ============================================================
+// services/authService.js
+// ------------------------------------------------------------
+// Purpose: Contains ALL business logic for authentication.
+//          Controllers are kept thin by delegating here.
+//
+// Responsibilities:
+//   • Query the database
+//   • Verify passwords
+//   • Generate tokens
+//   • Decide which error to surface (without leaking details)
+// ============================================================
+
+
+                    // Existing Mongoose model
+const { generateToken } = require("../utils/jwtHelper"); // JWT helper (single source of truth)
+
+// ------------------------------------------------------------------
+// loginUser(email, password)
+// ------------------------------------------------------------------
+// Authenticates a user with email + password credentials.
+//
+// Security note: We return the SAME generic message ("Invalid
+// credentials") whether the email is wrong OR the password is wrong.
+// This prevents user-enumeration attacks where an attacker probes
+// which emails are registered.
+//
+// @param  {string} email     - Normalised email from validator.
+// @param  {string} password  - Plain-text password from request body.
+// @returns {Object}          - { token, user: { id, name, email } }
+// @throws {Error}            - With .statusCode set for controller.
+// ------------------------------------------------------------------
+const loginUser = async (email, password) => {
+  // ---------------------------------------------------------------
+  // STEP 1 — Find the user document in MongoDB by email.
+  //
+  // .select("+password") is needed if the User schema marks the
+  // password field as  `select: false`  (a common security practice
+  // so passwords are never accidentally returned in queries).
+  // ---------------------------------------------------------------
+  //const user = await User.findOne({ email }).select("+password");
+  const user = await User.findOne({ email });
+
+  // ---------------------------------------------------------------
+  // STEP 2 — Guard: user not found.
+  //
+  // We intentionally say "Invalid credentials" and NOT
+  // "User not found" to prevent email enumeration.
+  // ---------------------------------------------------------------
+  if (!user) {
+    const error = new Error("Invalid credentials");
+    error.statusCode = 401; // 401 Unauthorized
+    throw error;
+  }
+
+  // ---------------------------------------------------------------
+  // STEP 3 — Compare the supplied plain-text password against the
+  // bcrypt hash stored in the database.
+  //
+  // bcrypt.compare() is async and timing-safe.  It hashes the
+  // incoming password with the same salt extracted from the stored
+  // hash, then does a constant-time comparison.
+  // ---------------------------------------------------------------
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+
+  if (!isPasswordValid) {
+    // Same generic message as "user not found" — intentional.
+    const error = new Error("Invalid credentials");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  // ---------------------------------------------------------------
+  // STEP 4 — Generate a signed JWT.
+  //
+  // Payload: only { userId } — minimal surface area.
+  // The full user profile is returned separately; the token is just
+  // used for subsequent request authentication.
+  // ---------------------------------------------------------------
+  const token = generateToken({ userId: user._id });
+
+  // ---------------------------------------------------------------
+  // STEP 5 — Build the safe user object to return to the client.
+  //
+  // NEVER send the hashed password back, even accidentally.
+  // Explicitly pick only the fields the client needs.
+  // ---------------------------------------------------------------
+  const safeUser = {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+  };
+
+  return { token, user: safeUser };
+};
+
+module.exports = { registerUser,loginUser, };

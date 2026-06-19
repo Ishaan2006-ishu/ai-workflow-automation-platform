@@ -67,4 +67,69 @@ const register = async (req, res) => {
   }
 };
 
-module.exports = { register };
+// ============================================================
+// controllers/authController.js
+// ------------------------------------------------------------
+// Purpose: Thin HTTP layer.  Its ONLY jobs are:
+//   1. Extract validated data from req.body
+//   2. Call the service
+//   3. Send a standardised HTTP response
+//
+// NO business logic lives here — that belongs in authService.
+// ============================================================
+
+
+// const responseHelper = require("../utils/responseHelper"); // Existing standardised response util
+
+// ------------------------------------------------------------------
+// login  —  POST /api/auth/login
+// ------------------------------------------------------------------
+// The validator middleware (validateLogin) already ran before this
+// controller is reached, so req.body.email and req.body.password are
+// guaranteed to be present and well-formed.
+// ------------------------------------------------------------------
+const login = async (req, res) => {
+  try {
+    // --- Extract validated fields from request body ---
+    const { email, password } = req.body;
+
+    // --- Delegate ALL logic to the service layer ---
+    // The service returns { token, user } on success,
+    // or throws an Error with a .statusCode property on failure.
+    const { token, user } = await authService.loginUser(email, password);
+
+    // --- Send success response ---
+    // responseHelper.success() wraps the payload in a consistent
+    // { success: true, message, data } envelope.
+    return sendSuccess(res, "Login successful", { token, user });
+
+  } catch (error) {
+    // ----------------------------------------------------------
+    // Centralised error handling
+    //
+    // authService sets error.statusCode for known failures
+    // (e.g. 401 for invalid credentials).
+    //
+    // Unknown errors (DB down, etc.) fall back to 500 so we
+    // never accidentally expose an unhandled exception message
+    // to the client.
+    // ----------------------------------------------------------
+    const statusCode = error.statusCode || 500;
+
+    // For unexpected server errors, log the real message on the
+    // server but send a generic message to the client.
+    if (statusCode === 500) {
+      console.error("[authController.login] Unexpected error:", error);
+    }
+
+    return sendError(
+      res,
+      statusCode === 500 ? "An internal server error occurred" : error.message,
+      statusCode
+    );
+  }
+};
+
+
+
+module.exports = { login,register, };
