@@ -8,45 +8,74 @@
 //   entry point (app.js / server.js) means:
 //     • Routes can be mounted at any prefix without editing
 //       the route file (e.g. /api/auth, /v2/auth).
-//     • Adding new auth endpoints (login, logout) means
-//       appending one line here — nothing else changes.
+//     • Adding new auth endpoints (register, login, logout)
+//       means appending one line here — nothing else changes.
 //     • The file reads top-to-bottom as a clear contract:
 //       "method + path → validate → handle"
 //
 // HOW MIDDLEWARE CHAINING WORKS:
 //   router.post("/register", validateRegister, register)
-//                              ↑ runs first      ↑ runs if validator calls next()
-//   If validateRegister sends a 400, register is never called.
+//                              ↑ runs first      ↑ runs only if validator calls next()
+//   If validateRegister sends a 400/422, register is NEVER called.
+//   The same pattern applies to every route in this file.
+//
+// MOUNTING:
+//   In app.js / server.js:
+//     app.use("/api/auth", authRoutes);
+//   This file's routes then resolve to:
+//     POST /api/auth/register
+//     POST /api/auth/login
 // =============================================================
 
 const express = require("express");
 const router = express.Router();
 
-// ── VALIDATOR ─────────────────────────────────────────────────
-// Runs before the controller to reject bad input early.
-const { validateRegister } = require("../validators/authValidator");
+// ── VALIDATORS ────────────────────────────────────────────────
+// Each validator is an array of express-validator rules followed
+// by a middleware that collects errors and short-circuits the
+// request before the controller is ever reached.
+const {
+  validateRegister,
+  validateLogin,
+} = require("../validators/authValidator");
 
-// ── CONTROLLER ────────────────────────────────────────────────
-// Thin handler that calls the service and sends the response.
-const { register } = require("../controllers/authController");
+// ── CONTROLLERS ───────────────────────────────────────────────
+// Thin handlers: extract data → call service → send response.
+// Zero business logic lives here.
+const {
+  register,
+  login,
+} = require("../controllers/authController");
 
 // =============================================================
 // ROUTE DEFINITIONS
-// Base path prefix (/api/auth) is applied when this router is
-// mounted in the main app file, e.g.:
-//   app.use("/api/auth", authRoutes);
-// So this route handles: POST /api/auth/register
 // =============================================================
 
 /**
- * POST /register
+ * POST /api/auth/register
  *
  * Pipeline: validateRegister → register
  *
  * 1. validateRegister checks name, email, password presence
- *    and password minimum length. Sends 400 on failure.
- * 2. register calls authService, then sends 201 or 409.
+ *    and password minimum length. Sends 422 on failure.
+ * 2. register calls authService.registerUser, then responds
+ *    with 201 (created) or 409 (email already exists).
  */
 router.post("/register", validateRegister, register);
+
+/**
+ * POST /api/auth/login
+ *
+ * Pipeline: validateLogin → login
+ *
+ * Public endpoint — no auth middleware needed here because
+ * this IS the endpoint that issues the token.
+ *
+ * 1. validateLogin checks email format and password presence.
+ *    Sends 422 on failure.
+ * 2. login calls authService.loginUser, then responds with
+ *    200 + { token, user } or 401 (invalid credentials).
+ */
+router.post("/login", validateLogin, login);
 
 module.exports = router;

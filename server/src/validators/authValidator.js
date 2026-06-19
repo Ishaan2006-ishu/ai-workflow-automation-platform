@@ -31,37 +31,52 @@ const { sendError } = require("../utils/responseHelper");
 const validateRegister = (req, res, next) => {
   const { name, email, password } = req.body;
 
-  // ── 1. NAME ────────────────────────────────────────────────
-  // Check presence and that it is not just whitespace.
   if (!name || name.trim() === "") {
     return sendError(res, "Name is required", 400);
   }
 
-  // ── 2. EMAIL ───────────────────────────────────────────────
   if (!email || email.trim() === "") {
     return sendError(res, "Email is required", 400);
   }
 
-  // Basic email format check using a well-known regex pattern.
-  // This catches obvious mistakes like missing "@" or domain.
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   if (!emailRegex.test(email.trim())) {
     return sendError(res, "Please provide a valid email address", 400);
   }
 
-  // ── 3. PASSWORD ────────────────────────────────────────────
   if (!password) {
     return sendError(res, "Password is required", 400);
   }
 
-  // Minimum length guard — 6 characters is the project minimum.
   if (password.length < 6) {
     return sendError(res, "Password must be at least 6 characters", 400);
   }
 
-  // ── ALL CHECKS PASSED ──────────────────────────────────────
-  // Call next() to hand control to the controller.
   next();
 };
 
-module.exports = { validateRegister };
+const validateLogin = (req, res, next) => {
+  const { email, password } = req.body;
+
+  if (!email || email.trim() === "") {
+    return sendError(res, "Email is required", 400);
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailRegex.test(email.trim())) {
+    return sendError(res, "Please provide a valid email address", 400);
+  }
+
+  if (!password) {
+    return sendError(res, "Password is required", 400);
+  }
+
+  next();
+};
+
+module.exports = {
+  validateRegister,
+  validateLogin,
+};
