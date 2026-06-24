@@ -11,7 +11,7 @@
  * Architecture: Model layer — no business logic lives here.
  */
 
-import mongoose from "mongoose";
+const mongoose =require( "mongoose");
 
 const { Schema, model } = mongoose;
 
@@ -221,7 +221,7 @@ const WorkflowSchema = new Schema(
  * lookup when checking for duplicate workflow names
  * within the same user's account.
  * ───────────────────────────────────────────── */
-WorkflowSchema.index({ userId: 1 });
+
 
 /* ─────────────────────────────────────────────
  * MODEL EXPORT
@@ -231,4 +231,4 @@ WorkflowSchema.index({ userId: 1 });
  * ───────────────────────────────────────────── */
 const Workflow = model("Workflow", WorkflowSchema);
 
-export default Workflow;
+module.exports= Workflow;
