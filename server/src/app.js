@@ -11,10 +11,12 @@ app.use(cors());
 
 
 const authRoutes = require("./routes/authRoute");
+const workflowRoutes= require("./routes/workflowRoutes");
 
 
 
 app.use("/api/auth", authRoutes);
+app.use("/api/workflows", workflowRoutes);
 
 
 
