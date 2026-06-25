@@ -38,4 +38,7 @@ router.post(
   createWorkflow
 );
 
+const { getWorkflows } = require("../controllers/workflowController");
+router.get("/", protect, getWorkflows);
+
 module.exports = router;
