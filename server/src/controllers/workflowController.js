@@ -2,14 +2,18 @@
  * @file workflowController.js
  * @description Controller for Workflow HTTP endpoints.
  *
- * Handles only HTTP concerns — parsing req, shaping res.
- * All business logic is delegated to workflowService.
+ * Handles only HTTP concerns (request & response).
+ * All business logic is delegated to the Workflow Service.
  *
  * Architecture:
  * Route → Controller → Service → Database
  */
 
-const workflowService = require("../services/workflowService");
+const { createWorkflows,fetchUserWorkflows } = require("../services/workflowService");
+const {
+  successResponse,
+  errorResponse,
+} = require("../utils/responseHelper");
 
 /**
  * POST /api/workflows
@@ -20,11 +24,11 @@ const createWorkflow = async (req, res) => {
     // Extract validated workflow name
     const { name } = req.body;
 
-    // Extract authenticated user ID from JWT payload
+    // Extract authenticated user ID from JWT middleware
     const userId = req.user.id;
 
-    // Delegate business logic to service layer
-    const workflow = await workflowService.createWorkflow({
+    // Delegate business logic to the service layer
+    const workflow = await createWorkflows({
       name,
       userId,
     });
@@ -36,17 +40,52 @@ const createWorkflow = async (req, res) => {
     });
   } catch (error) {
     console.error(
-      "[WorkflowController] createWorkflow error:",
+      "[WorkflowController] createWorkflow Error:",
       error.message
     );
 
-    return res.status(500).json({
-      success: false,
-      message: "An error occurred while creating the workflow",
-    });
+    return errorResponse(
+      res,
+      500,
+      "An error occurred while creating the workflow"
+    );
+  }
+};
+
+/**
+ * GET /api/workflows
+ * Returns all workflows belonging to the authenticated user.
+ */
+const getWorkflows = async (req, res) => {
+  try {
+    // Extract authenticated user ID from JWT middleware
+    const userId = req.user.id;
+
+    // Delegate business logic to the service layer
+    const workflows = await fetchUserWorkflows(userId);
+
+    // Return successful response
+    return successResponse(
+      res,
+      200,
+      "Workflows fetched successfully",
+      workflows
+    );
+  } catch (error) {
+    console.error(
+      "[WorkflowController] getWorkflows Error:",
+      error.message
+    );
+
+    return errorResponse(
+      res,
+      500,
+      "Failed to fetch workflows"
+    );
   }
 };
 
 module.exports = {
   createWorkflow,
+  getWorkflows,
 };
