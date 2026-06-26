@@ -16,10 +16,11 @@ const {protect}= require("../middleware/authMiddleware");
 const {
   createWorkflowRules,
   validateCreateWorkflow,
+  validateSaveWorkflow,
 } = require("../validators/workflowValidator");
 
 // Controller
-const { createWorkflow } = require("../controllers/workflowController");
+const { createWorkflow,getWorkflows,  getWorkflow,saveWorkflow} = require("../controllers/workflowController");
 
 /**
  * POST /api/workflows
@@ -38,7 +39,8 @@ router.post(
   createWorkflow
 );
 
-const { getWorkflows } = require("../controllers/workflowController");
-router.get("/", protect, getWorkflows);
 
+router.get("/", protect, getWorkflows);
+router.get("/:id", protect, getWorkflow);
+router.put("/:id", protect, validateSaveWorkflow, saveWorkflow);
 module.exports = router;
