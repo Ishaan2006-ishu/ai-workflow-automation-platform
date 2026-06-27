@@ -9,7 +9,7 @@
  * Route → Controller → Service → Database
  */
 
-const { createWorkflows,fetchUserWorkflows , getWorkflowById,saveWorkflowService} = require("../services/workflowService");
+const { createWorkflows,fetchUserWorkflows , getWorkflowById, saveWorkflowService, deleteworkflowService } = require("../services/workflowService");
 const {
   successResponse,
   errorResponse,
@@ -162,7 +162,24 @@ const saveWorkflow = async (req, res) => {
   }
 };
 
+const deleteWorkflow = async (req, res, next) => {
+  try {
+    // 1. Extract the workflow ID from the URL parameter (/api/workflows/:id)
+    const { id } = req.params;
 
+    // 2. Extract the authenticated user injected by the auth middleware
+    const user = req.user;
+
+    // 3. Delegate all business logic to the service layer
+    await deleteWorkflowService(id, user);
+
+    // 4. Return a standardised success response (no body needed for a delete)
+    return successResponse(res, 200, "Workflow deleted successfully");
+  } catch (error) {
+    // 5. Pass any error to the global Express error handler
+    next(error);
+  }
+};
 
 module.exports = {
   createWorkflow,
