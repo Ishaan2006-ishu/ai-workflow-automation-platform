@@ -102,11 +102,51 @@ const saveWorkflow = async (workflowId, userId, nodes, edges) => {
   };
 };
 
+/**
+ * Deletes a workflow document from MongoDB.
+ *
+ * Enforces two rules before deleting:
+ *   1. The workflow must exist (404 if not found).
+ *   2. The requesting user must own the workflow (403 if not their document).
+ *
+ * @param {string} workflowId  - The workflow's MongoDB ObjectId (from req.params.id)
+ * @param {object} user        - The authenticated user object (from req.user)
+ * @param {string} user._id    - The user's MongoDB ObjectId
+ * @throws {Error} 404 if the workflow does not exist
+ * @throws {Error} 403 if the authenticated user does not own the workflow
+ */
+const deleteWorkflowService = async (workflowId, user) => {
+  // Step 1: Look up the workflow by its ID.
+  // We only fetch the fields we need for the ownership check to keep
+  // the query lightweight — no need to pull nodes/edges into memory.
+  const workflow = await Workflow.findById(workflowId).select("userId");
+
+  // Step 2: Guard — workflow must exist before we do anything else.
+  if (!workflow) {
+    const error = new Error("Workflow not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Step 3: Ownership check — the authenticated user must own this workflow.
+  // We convert both ObjectIds to strings for a safe equality comparison,
+  // because Mongoose ObjectId === ObjectId uses reference equality, not value equality.
+  if (workflow.userId.toString() !== user._id.toString()) {
+    const error = new Error("You are not authorised to delete this workflow");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  // Step 4: All checks passed — permanently remove the document from MongoDB.
+  await Workflow.findByIdAndDelete(workflowId);
+};
+
 
 module.exports = {
     createWorkflows,
     fetchUserWorkflows,
     getWorkflowById,
      saveWorkflow,
+     deleteWorkflowService,
 
 };

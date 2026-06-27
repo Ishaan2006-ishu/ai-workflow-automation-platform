@@ -12,6 +12,11 @@ const router = express.Router();
 // Middleware
 const {protect}= require("../middleware/authMiddleware");
 
+
+
+
+
+
 // Validators
 const {
   createWorkflowRules,
@@ -20,7 +25,7 @@ const {
 } = require("../validators/workflowValidator");
 
 // Controller
-const { createWorkflow,getWorkflows,  getWorkflow,saveWorkflow} = require("../controllers/workflowController");
+const { createWorkflow,getWorkflows,  getWorkflow,saveWorkflow,deleteWorkflow} = require("../controllers/workflowController");
 
 /**
  * POST /api/workflows
@@ -43,4 +48,5 @@ router.post(
 router.get("/", protect, getWorkflows);
 router.get("/:id", protect, getWorkflow);
 router.put("/:id", protect, validateSaveWorkflow, saveWorkflow);
+router.delete("/:id", protect, deleteWorkflow);
 module.exports = router;
