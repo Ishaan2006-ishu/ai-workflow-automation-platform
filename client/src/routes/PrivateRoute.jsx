@@ -1,30 +1,26 @@
-// routes/PrivateRoute.jsx
-// -----------------------
-// A route guard for PROTECTED pages (Dashboard, Builder, History).
-//
-// Logic:
-//   - isAuthenticated === true  → render the requested page (children)
-//   - isAuthenticated === false → redirect to /login
-//
-// This component does NOT handle login, logout, or API calls.
-// It only reads state and makes a render decision.
+// src/routes/PrivateRoute.jsx
 
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import useAuth from "../hooks/useAuth";
 
-// `children` is the page component passed from AppRouter.
-// Example: <PrivateRoute><DashboardPage /></PrivateRoute>
-function PrivateRoute({ children }) {
-  // Pull isAuthenticated from the global AuthContext.
-  // This value is set in AuthContext.jsx and will later be
-  // updated when a real login is implemented.
+/**
+ * Guards routes that require authentication.
+ * WHY: Checking isAuthenticated here (rather than inside each page
+ * component) means the redirect happens before the protected page
+ * even mounts — preventing a flash of protected content or a failed
+ * API call due to a missing token.
+ */
+const PrivateRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
 
-  // If the user is authenticated, render the protected page normally.
-  // Otherwise, send them to /login.
-  // `replace` prevents the protected URL from being pushed onto history
-  // (so the back button doesn't land the user on a page they can't access).
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
-}
+  if (!isAuthenticated) {
+    // WHY: `replace` prevents the protected route from staying in
+    // browser history, so the user can't hit "back" and land on a
+    // page that immediately redirects them again.
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
 
 export default PrivateRoute;
