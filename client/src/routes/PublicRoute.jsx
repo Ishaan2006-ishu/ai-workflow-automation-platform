@@ -1,27 +1,26 @@
-// routes/PublicRoute.jsx
-// ----------------------
-// A route guard for PUBLIC-ONLY pages (Login, Register).
-//
-// Logic:
-//   - isAuthenticated === true  → redirect to /dashboard
-//     (a logged-in user has no reason to see the login page)
-//   - isAuthenticated === false → render the page (children)
-//
-// This prevents logged-in users from navigating back to /login
-// or /register via the browser's address bar.
+// src/routes/PublicRoute.jsx
 
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import useAuth from "../hooks/useAuth";
 
-// `children` is the page component passed from AppRouter.
-// Example: <PublicRoute><LoginPage /></PublicRoute>
-function PublicRoute({ children }) {
-  // Pull isAuthenticated from the global AuthContext.
+/**
+ * Guards routes that should only be visible to unauthenticated users
+ * (Login, Register).
+ * WHY: Without this, a logged-in user could revisit /login and
+ * trigger a redundant login flow, or briefly see a stale auth form
+ * instead of being routed straight back into the app.
+ */
+const PublicRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
 
-  // If authenticated, send to /dashboard. Otherwise, show the public page.
-  // `replace` keeps the history stack clean (no back-button loops).
-  return isAuthenticated ? <Navigate to="/dashboard" replace /> : children;
-}
+  if (isAuthenticated) {
+    // WHY: `replace` keeps /login or /register out of browser history
+    // once the user is authenticated, so "back" doesn't loop them
+    // back into the auth pages.
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
 
 export default PublicRoute;
