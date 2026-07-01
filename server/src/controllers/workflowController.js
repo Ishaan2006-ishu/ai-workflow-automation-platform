@@ -185,5 +185,6 @@ module.exports = {
   createWorkflow,
   getWorkflows,
   getWorkflow,
-  saveWorkflow
+  saveWorkflow,
+  deleteWorkflow
 };
