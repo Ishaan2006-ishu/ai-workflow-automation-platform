@@ -8,6 +8,7 @@ import PublicRoute from "./routes/PublicRoute";
 
 import RegisterPage from "./pages/RegisterPage";
 import LoginPage from "./pages/LoginPage";
+import DashboardPage from "./pages/DashboardPage";
 
 /**
  * WHY: Dashboard belongs to the next development day. This placeholder
@@ -48,7 +49,7 @@ function App() {
             path="/dashboard"
             element={
               <PrivateRoute>
-                <DashboardPlaceholder />
+                <DashboardPage />
               </PrivateRoute>
             }
           />
