@@ -31,7 +31,7 @@ const createWorkflows = async ({ name, userId }) => {
 
 const fetchUserWorkflows = async (userId) => {
   // Filter strictly by the owner field so cross-user data leakage is impossible
-  const workflows = await Workflow.find({ user: userId })
+  const workflows = await Workflow.find({ userId })
     .sort({ createdAt: -1 }) // Most recently created workflows appear first
     .lean();                  // Return plain JS objects for better read performance
  
@@ -115,7 +115,7 @@ const saveWorkflow = async (workflowId, userId, nodes, edges) => {
  * @throws {Error} 404 if the workflow does not exist
  * @throws {Error} 403 if the authenticated user does not own the workflow
  */
-const deleteWorkflowService = async (workflowId, user) => {
+const deleteWorkflowService = async (workflowId, userId) => {
   // Step 1: Look up the workflow by its ID.
   // We only fetch the fields we need for the ownership check to keep
   // the query lightweight — no need to pull nodes/edges into memory.
@@ -131,7 +131,7 @@ const deleteWorkflowService = async (workflowId, user) => {
   // Step 3: Ownership check — the authenticated user must own this workflow.
   // We convert both ObjectIds to strings for a safe equality comparison,
   // because Mongoose ObjectId === ObjectId uses reference equality, not value equality.
-  if (workflow.userId.toString() !== user._id.toString()) {
+  if (workflow.userId.toString() !== userId.toString()) {
     const error = new Error("You are not authorised to delete this workflow");
     error.statusCode = 403;
     throw error;
