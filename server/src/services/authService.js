@@ -84,7 +84,7 @@ const registerUser = async (name, email, password) => {
   return { success: true, message: "User registered successfully" };
 };
 
-module.exports = { registerUser };
+
 
 // ============================================================
 // services/authService.js
