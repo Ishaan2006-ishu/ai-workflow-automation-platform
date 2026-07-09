@@ -1,0 +1,116 @@
+/* src/components/NodePanel.css */
+
+/*
+  Design tokens for the node panel.
+  Centralizing these as CSS variables means the whole panel's look
+  (spacing, radius, colors) can be tuned from one place later,
+  instead of hunting through every rule.
+*/
+:root {
+  --panel-bg: #fafafa;
+  --panel-border: #e5e7eb;
+
+  --card-bg: #ffffff;
+  --card-border: #e5e7eb;
+  --card-border-hover: #c7c9ce;
+  --card-radius: 8px;
+
+  --text-primary: #1f2328;
+  --text-secondary: #6b7280;
+
+  /* One accent color per node type, echoing how tools like n8n
+     color-code node categories so they're scannable at a glance. */
+  --accent-start: #12b76a;
+  --accent-ai: #7c3aed;
+  --accent-condition: #f59e0b;
+  --accent-notification: #2563eb;
+}
+
+/* ---------- Panel shell ---------- */
+
+.node-panel {
+  height: 100%;
+  background: var(--panel-bg);
+  border-right: 1px solid var(--panel-border);
+  padding: 16px 12px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.node-panel__title {
+  margin: 0 0 12px 4px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* Vertical stack of cards with consistent, equal spacing.
+   Flexbox (not a <ul>) since these are interactive cards, not a
+   list of text — no bullets, no list semantics we don't want. */
+.node-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---------- Node card ---------- */
+
+.node-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 10px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  background: var(--card-bg);
+
+  cursor: pointer; /* signals "this will be actionable" even before drag-and-drop exists */
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.node-card:hover {
+  border-color: var(--card-border-hover);
+  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.08);
+  transform: translateY(-1px);
+}
+
+/* Icon placeholder: a small colored badge rather than a real icon
+   library import (no new dependencies). The color comes from a
+   per-card CSS variable set inline — see NodePanel.jsx. */
+.node-card__icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  background: color-mix(in srgb, var(--accent-color) 15%, white);
+  color: var(--accent-color);
+}
+
+.node-card__text {
+  min-width: 0; /* allows text truncation to work inside a flex child */
+}
+
+.node-card__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Exactly one line — no descriptions, no wrapping paragraphs. */
+.node-card__subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

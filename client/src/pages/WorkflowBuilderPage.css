@@ -1,0 +1,49 @@
+/* src/pages/WorkflowBuilderPage.css */
+
+/* Full-viewport-height column: header on top, panel+canvas row filling
+   the rest. min-height: 0 on the row is what allows its flex children
+   (the canvas) to actually fill height instead of being pushed out. */
+.workflow-builder-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+/* ---------- Header ---------- */
+
+.workflow-builder-page__header {
+  flex-shrink: 0;
+  padding: 10px 20px;
+  border-bottom: 5px solid #e5e7eb;
+}
+
+.workflow-builder-page__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2328;
+}
+
+/* ---------- Body: panel + canvas side by side ---------- */
+
+.workflow-builder-page__body {
+  flex: 1;
+  min-height: 0; /* prevents the row from growing past the viewport */
+  display: flex;
+}
+
+/* Fixed-width node panel, per spec (~240-260px). Does not shrink
+   even if the canvas content wants more room. */
+.workflow-builder-page__panel {
+  width: 250px;
+  flex-shrink: 0;
+  height: 100%;
+}
+
+/* Canvas fills all remaining horizontal space. */
+.workflow-builder-page__canvas {
+  flex: 1;
+  min-width: 0; /* prevents canvas content from overflowing the row */
+  height: 100%;
+}
