@@ -49,14 +49,12 @@ const LoginPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await loginApi(formData.email, formData.password);
+      const { data } = await loginApi(
+  formData.email,
+  formData.password
+);
 
-      // WHY: This single call saves the token to localStorage AND
-      // updates AuthContext state in one step, so every component
-      // reading useAuth() (Navbar, PrivateRoute, etc.) immediately
-      // reflects the logged-in state on the very next render.
-      login(response.token, response.user);
-
+login(data.token, data.user);
       navigate("/dashboard");
     } catch (error) {
       // WHY: error.message is the backend's exact reason
