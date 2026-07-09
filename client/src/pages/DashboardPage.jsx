@@ -28,8 +28,8 @@ const DashboardPage = () => {
   useEffect(() => {
     const fetchWorkflows = async () => {
       try {
-        const data = await getWorkflows();
-        setWorkflows(data);
+        const response = await getWorkflows();
+setWorkflows(response.data);
       } catch (err) {
         setError("Failed to load workflows. Please try again.");
       } finally {
