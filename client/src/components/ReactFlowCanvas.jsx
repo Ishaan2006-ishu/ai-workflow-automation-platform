@@ -53,7 +53,7 @@ function ReactFlowCanvas() {
   return (
     // The outer div MUST have an explicit height, or React Flow
     // renders a canvas with zero visible height (a common gotcha).
-    <div style={{ width: '100%', height: '600px' }}>
+    <div style={{ width: '100%', height: '100%' }}>
       <ReactFlow
         nodes={initialNodes}
         edges={initialEdges}
