@@ -1,44 +1,96 @@
 // src/pages/WorkflowBuilderPage.jsx
 
-import ReactFlowCanvas from '../components/ReactFlowCanvas';
-import NodePanel from '../components/NodePanel';
-import './WorkflowBuilderPage.css';
+import { useState } from "react";
+import ReactFlowCanvas from "../components/ReactFlowCanvas";
+import NodePanel from "../components/NodePanel";
+import "./WorkflowBuilderPage.css";
 
 /**
  * WorkflowBuilderPage
  *
- * Route-level page for building workflows. Still stays "dumb" about
- * both React Flow and the node panel — its only job is layout:
+ * Parent component of the Workflow Builder.
  *
- *   -----------------------------------------
- *   | Node Panel (~250px) | Canvas (rest)    |
- *   -----------------------------------------
- *
- * fixed at full viewport height, never stacked vertically.
- *
- * This pass only touches layout (the wrapper structure + CSS
- * classes below). NodePanel and ReactFlowCanvas each own their own
- * internals, so neither React Flow's nodes/edges/handlers nor the
- * node panel's data were changed here.
+ * Responsibilities:
+ * 1. Own the workflow state (nodes & edges)
+ * 2. Pass state to ReactFlowCanvas
+ * 3. Pass functions (callbacks) to NodePanel
  */
+
 function WorkflowBuilderPage() {
+  // ==========================
+  // Workflow State
+  // ==========================
+  const [nodes, setNodes] = useState([
+    {
+      id: "1",
+      type: "start",
+      position: { x: 100, y: 100 },
+      data: { label: "Start" },
+    },
+  ]);
+
+  const [edges, setEdges] = useState([]);
+
+  // ==========================
+  // Add New Node
+  // ==========================
+  const addNode = (type) => {
+
+  // ==========================
+  // Allow only one Start node
+  // ==========================
+  if (type === "start") {
+    const hasStartNode = nodes.some(
+      (node) => node.type === "start"
+    );
+
+    if (hasStartNode) {
+      alert("Only one Start node is allowed.");
+      return;
+    }
+  }
+
+  // ==========================
+  // Create New Node
+  // ==========================
+  const newNode = {
+    id: Date.now().toString(),
+    type,
+    position: {
+  x: 100 + nodes.length * 80,
+  y: 100 + nodes.length * 80,
+},
+    data: {
+      label: type.toUpperCase(),
+    },
+  };
+
+  setNodes((prevNodes) => [...prevNodes, newNode]);
+};
+
   return (
     <div className="workflow-builder-page">
-      {/* Compact header — a small title bar, not a hero section,
-          so it doesn't eat vertical space the canvas needs. */}
+      {/* Header */}
       <header className="workflow-builder-page__header">
-        <h1 className="workflow-builder-page__title">Workflow Builder</h1>
+        <h1 className="workflow-builder-page__title">
+          Workflow Builder
+        </h1>
       </header>
 
-      {/* Flex row: panel and canvas side by side, filling the
-          remaining viewport height below the header. */}
+      {/* Main Layout */}
       <div className="workflow-builder-page__body">
+        {/* Left Sidebar */}
         <div className="workflow-builder-page__panel">
-          <NodePanel />
+          <NodePanel onAddNode={addNode} />
         </div>
 
+        {/* React Flow Canvas */}
         <div className="workflow-builder-page__canvas">
-          <ReactFlowCanvas />
+         <ReactFlowCanvas
+    nodes={nodes}
+    edges={edges}
+    setNodes={setNodes}
+/>
         </div>
       </div>
     </div>
