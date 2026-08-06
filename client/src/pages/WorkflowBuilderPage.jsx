@@ -90,6 +90,7 @@ function WorkflowBuilderPage() {
     nodes={nodes}
     edges={edges}
     setNodes={setNodes}
+    setEdges={setEdges}
 />
         </div>
       </div>

@@ -6,35 +6,54 @@ import {
   Controls,
   MiniMap,
   applyNodeChanges,
+  addEdge,
 } from "@xyflow/react";
+
+import StartNode from "./nodes/StartNode";
+import AINode from "./nodes/AINode";
+import ConditionNode from "./nodes/ConditionNode";
+import NotificationNode from "./nodes/NotificationNode";
 
 /**
  * ReactFlowCanvas
  *
  * Responsibilities:
  * 1. Display workflow nodes and edges.
- * 2. Notify the parent when nodes move.
+ * 2. Notify parent when nodes move.
+ * 3. Notify parent when two nodes are connected.
  *
- * NOTE:
  * WorkflowBuilderPage owns the state.
- * This component only renders it and reports changes.
  */
+
+const nodeTypes = {
+  start: StartNode,
+  ai: AINode,
+  condition: ConditionNode,
+  notification: NotificationNode,
+};
 
 function ReactFlowCanvas({
   nodes,
   edges,
   setNodes,
+  setEdges,
 }) {
 
-  /**
-   * Called automatically by React Flow whenever:
-   * - a node is dragged
-   * - a node is selected
-   * - a node position changes
-   */
+  // ==========================
+  // Node Dragging
+  // ==========================
   const onNodesChange = (changes) => {
     setNodes((prevNodes) =>
       applyNodeChanges(changes, prevNodes)
+    );
+  };
+
+  // ==========================
+  // Node Connection
+  // ==========================
+  const onConnect = (connection) => {
+    setEdges((prevEdges) =>
+      addEdge(connection, prevEdges)
     );
   };
 
@@ -43,7 +62,9 @@ function ReactFlowCanvas({
       <ReactFlow
         nodes={nodes}
         edges={edges}
+         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
+        onConnect={onConnect}
         fitView
       >
         <Background />
