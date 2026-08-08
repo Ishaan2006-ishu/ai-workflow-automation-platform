@@ -8,15 +8,33 @@ function ConditionNode({ data }) {
         border: "2px solid #f59e0b",
         borderRadius: "8px",
         background: "white",
-        minWidth: "120px",
+        minWidth: "140px",
         textAlign: "center",
       }}
     >
-      <Handle type="target" position={Position.Top} />
+      {/* Input */}
+      <Handle
+        type="target"
+        position={Position.Top}
+      />
 
       <strong>{data.label}</strong>
 
-      <Handle type="source" position={Position.Bottom} />
+      {/* TRUE output */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="true"
+        style={{ left: "30%" }}
+      />
+
+      {/* FALSE output */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="false"
+        style={{ left: "70%" }}
+      />
     </div>
   );
 }

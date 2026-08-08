@@ -6,6 +6,7 @@ import {
   Controls,
   MiniMap,
   applyNodeChanges,
+  applyEdgeChanges,
   addEdge,
 } from "@xyflow/react";
 
@@ -13,17 +14,6 @@ import StartNode from "./nodes/StartNode";
 import AINode from "./nodes/AINode";
 import ConditionNode from "./nodes/ConditionNode";
 import NotificationNode from "./nodes/NotificationNode";
-
-/**
- * ReactFlowCanvas
- *
- * Responsibilities:
- * 1. Display workflow nodes and edges.
- * 2. Notify parent when nodes move.
- * 3. Notify parent when two nodes are connected.
- *
- * WorkflowBuilderPage owns the state.
- */
 
 const nodeTypes = {
   start: StartNode,
@@ -40,7 +30,7 @@ function ReactFlowCanvas({
 }) {
 
   // ==========================
-  // Node Dragging
+  // Node Changes
   // ==========================
   const onNodesChange = (changes) => {
     setNodes((prevNodes) =>
@@ -49,9 +39,22 @@ function ReactFlowCanvas({
   };
 
   // ==========================
-  // Node Connection
+  // Edge Changes
+  // ==========================
+  const onEdgesChange = (changes) => {
+    console.log("EDGE CHANGE:", changes);
+
+    setEdges((prevEdges) =>
+      applyEdgeChanges(changes, prevEdges)
+    );
+  };
+
+  // ==========================
+  // Create Connection
   // ==========================
   const onConnect = (connection) => {
+    console.log("NEW CONNECTION:", connection);
+
     setEdges((prevEdges) =>
       addEdge(connection, prevEdges)
     );
@@ -62,9 +65,16 @@ function ReactFlowCanvas({
       <ReactFlow
         nodes={nodes}
         edges={edges}
-         nodeTypes={nodeTypes}
+        nodeTypes={nodeTypes}
+
         onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+
+        elementsSelectable={true}
+        edgesFocusable={true}
+        deleteKeyCode={["Backspace", "Delete"]}
+
         fitView
       >
         <Background />
