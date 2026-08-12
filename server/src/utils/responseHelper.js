@@ -20,7 +20,7 @@ const sendSuccess = (res, message, data = {}, status = 200) => {
   return res.status(status).json({
     success: true,
     message,
-    ...(Object.keys(data).length > 0 && { data }),
+    data,
   });
 };
 

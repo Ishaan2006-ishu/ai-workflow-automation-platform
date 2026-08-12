@@ -1,83 +1,244 @@
-// pages/DashboardPage.jsx
-// -----------------------
-// Placeholder for the Dashboard page.
-// Rendered at: /dashboard (private route — requires authentication)
-//
-// Day 1: Routing only. No workflow cards, no stats, no UI.
-// Future days will add the dashboard UI and data fetching.
+// src/pages/DashboardPage.jsx
 
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+
 import Navbar from "../components/Navbar";
 import WorkflowCard from "../components/WorkflowCard";
+
 import { getWorkflows } from "../api/workflowApi";
 
+
 const DashboardPage = () => {
+
   const navigate = useNavigate();
 
-  // Holds the list of workflows fetched from the backend
+
+  // ============================================================
+  // WORKFLOW STATE
+  // ============================================================
+
   const [workflows, setWorkflows] = useState([]);
 
-  // Tracks whether the fetch request is still in progress
+
+  // ============================================================
+  // LOADING STATE
+  // ============================================================
+
   const [isLoading, setIsLoading] = useState(true);
 
-  // Holds an error message if the fetch fails
+
+  // ============================================================
+  // ERROR STATE
+  // ============================================================
+
   const [error, setError] = useState("");
 
-  // Fetch workflows once when the Dashboard mounts
+
+  // ============================================================
+  // FETCH WORKFLOWS
+  // ============================================================
+
   useEffect(() => {
+
     const fetchWorkflows = async () => {
+
       try {
+
         const response = await getWorkflows();
-setWorkflows(response.data);
+
+        console.log(
+          "WORKFLOW RESPONSE:",
+          response
+        );
+
+
+        /*
+          Backend response:
+
+          {
+            success: true,
+            message: "Workflows fetched successfully",
+            data: [...]
+          }
+
+          Therefore the actual workflow array
+          is response.data.
+        */
+
+        setWorkflows(
+          response.data || []
+        );
+
       } catch (err) {
-        setError("Failed to load workflows. Please try again.");
+
+        console.error(
+          "[DashboardPage] Fetch workflows:",
+          err
+        );
+
+        setError(
+          err.message ||
+          "Failed to load workflows."
+        );
+
       } finally {
+
         setIsLoading(false);
+
       }
+
     };
 
+
     fetchWorkflows();
+
   }, []);
 
-  // Navigates to the existing Workflow Builder route to create a new workflow
+
+  // ============================================================
+  // CREATE WORKFLOW
+  // ============================================================
+
   const handleCreateWorkflow = () => {
+
     navigate("/workflow-builder/new");
+
   };
 
+
+  // ============================================================
+  // DELETE WORKFLOW
+  // ============================================================
+
+  const handleDeleteWorkflow = (deletedWorkflowId) => {
+
+    /*
+      Remove the deleted workflow from React state.
+
+      Example:
+
+      Before:
+      [A, B, C]
+
+      Delete B
+
+      After:
+      [A, C]
+    */
+
+    setWorkflows((prevWorkflows) =>
+      prevWorkflows.filter(
+        (workflow) =>
+          workflow._id !== deletedWorkflowId
+      )
+    );
+
+  };
+
+
+  // ============================================================
+  // UI
+  // ============================================================
+
   return (
-    <div>
-      <h1 style={{ color: "red" }}>THIS IS MY NEW DASHBOARD</h1>
+
+    <div className="dashboard-page">
+
+      {/* ======================================================
+          NAVBAR
+          ====================================================== */}
+
       <Navbar />
 
-      <div className="dashboard-page">
-        <div className="dashboard-header">
-          <h1>Dashboard</h1>
-          <button onClick={handleCreateWorkflow}>Create Workflow</button>
-        </div>
 
-        <div className="workflow-list">
-          {/* Loading state */}
-          {isLoading && <p>Loading workflows...</p>}
+      {/* ======================================================
+          HEADER
+          ====================================================== */}
 
-          {/* Error state */}
-          {!isLoading && error && <p>{error}</p>}
+      <div className="dashboard-header">
 
-          {/* Empty state */}
-          {!isLoading && !error && workflows.length === 0 && (
-            <p>No workflows yet. Click "Create Workflow" to get started.</p>
+        <h1>
+          Dashboard
+        </h1>
+
+
+        <button
+          onClick={handleCreateWorkflow}
+        >
+          Create Workflow
+        </button>
+
+      </div>
+
+
+      {/* ======================================================
+          WORKFLOW LIST
+          ====================================================== */}
+
+      <div className="workflow-list">
+
+        {/* ----------------------------------------------------
+            Loading State
+            ---------------------------------------------------- */}
+
+        {isLoading && (
+          <p>
+            Loading workflows...
+          </p>
+        )}
+
+
+        {/* ----------------------------------------------------
+            Error State
+            ---------------------------------------------------- */}
+
+        {!isLoading && error && (
+          <p>
+            {error}
+          </p>
+        )}
+
+
+        {/* ----------------------------------------------------
+            Empty State
+            ---------------------------------------------------- */}
+
+        {!isLoading &&
+          !error &&
+          workflows.length === 0 && (
+
+            <p>
+              No workflows yet.
+              Click "Create Workflow" to get started.
+            </p>
+
           )}
 
-          {/* Success state — render one WorkflowCard per workflow */}
-          {!isLoading &&
-            !error &&
-            workflows.map((workflow) => (
-              <WorkflowCard key={workflow._id} workflow={workflow} />
-            ))}
-        </div>
+
+        {/* ----------------------------------------------------
+            Workflow Cards
+            ---------------------------------------------------- */}
+
+        {!isLoading &&
+          !error &&
+          workflows.map((workflow) => (
+
+            <WorkflowCard
+              key={workflow._id}
+              workflow={workflow}
+              onDelete={handleDeleteWorkflow}
+            />
+
+          ))}
+
       </div>
+
     </div>
+
   );
+
 };
+
 
 export default DashboardPage;

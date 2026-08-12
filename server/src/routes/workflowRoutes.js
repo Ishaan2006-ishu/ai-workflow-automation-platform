@@ -10,12 +10,7 @@ const express = require("express");
 const router = express.Router();
 
 // Middleware
-const {protect}= require("../middleware/authMiddleware");
-
-
-
-
-
+const { protect } = require("../middleware/authMiddleware");
 
 // Validators
 const {
@@ -25,7 +20,17 @@ const {
 } = require("../validators/workflowValidator");
 
 // Controller
-const { createWorkflow,getWorkflows,  getWorkflow,saveWorkflow,deleteWorkflow} = require("../controllers/workflowController");
+const {
+  createWorkflow,
+  getWorkflows,
+  getWorkflow,
+  saveWorkflow,
+  deleteWorkflow,
+} = require("../controllers/workflowController");
+
+const {
+  executeWorkflow,
+} = require("../controllers/executionController");
 
 /**
  * POST /api/workflows
@@ -44,9 +49,46 @@ router.post(
   createWorkflow
 );
 
-
+/**
+ * GET /api/workflows
+ */
 router.get("/", protect, getWorkflows);
+
+/**
+ * GET /api/workflows/:id
+ */
 router.get("/:id", protect, getWorkflow);
-router.put("/:id", protect, validateSaveWorkflow, saveWorkflow);
-router.delete("/:id", protect, deleteWorkflow);
+
+/**
+ * PUT /api/workflows/:id
+ */
+router.put(
+  "/:id",
+  protect,
+  validateSaveWorkflow,
+  saveWorkflow
+);
+
+/**
+ * DELETE /api/workflows/:id
+ */
+router.delete(
+  "/:id",
+  protect,
+  deleteWorkflow
+);
+
+/**
+ * POST /api/workflows/:id/execute
+ *
+ * Middleware Flow:
+ * 1. protect
+ * 2. executeWorkflow controller
+ */
+router.post(
+  "/:id/execute",
+  protect,
+  executeWorkflow
+);
+
 module.exports = router;
