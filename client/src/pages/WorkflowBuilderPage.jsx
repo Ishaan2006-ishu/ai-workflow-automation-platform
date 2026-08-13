@@ -1,7 +1,7 @@
 // src/pages/WorkflowBuilderPage.jsx
 
-import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 
 import ReactFlowCanvas from "../components/ReactFlowCanvas";
 import NodePanel from "../components/NodePanel";
@@ -14,43 +14,46 @@ import {
 
 import "./WorkflowBuilderPage.css";
 
+
 /**
  * WorkflowBuilderPage
  *
  * Responsibilities:
- * 1. Own workflow state (nodes & edges)
- * 2. Display the workflow builder
- * 3. Create a new workflow when saving for the first time
- * 4. Load an existing workflow when editing
- * 5. Save nodes and edges to the backend
+ *
+ * 1. Create a new workflow
+ * 2. Load an existing workflow
+ * 3. Own nodes and edges state
+ * 4. Save nodes, edges and workflow name
+ * 5. Update node configuration
  */
-
 function WorkflowBuilderPage() {
-  // ============================================================
-  // URL PARAMETER
-  // ============================================================
 
-  /*
-    AppRouter.jsx defines:
+  // ==========================================================
+  // WORKFLOW ID FROM URL
+  // ==========================================================
 
-    /workflow-builder/:workflowId
-
-    Therefore React Router gives us "workflowId".
-  */
-  const { workflowId: urlWorkflowId } = useParams();
-
-  const navigate = useNavigate();
+  const { workflowId } = useParams();
 
 
-  // ============================================================
+  // ==========================================================
+  // WORKFLOW NAME
+  // ==========================================================
+
+  const [workflowName, setWorkflowName] = useState("My Workflow");
+
+
+  // ==========================================================
   // WORKFLOW STATE
-  // ============================================================
+  // ==========================================================
 
   const [nodes, setNodes] = useState([
     {
       id: "1",
       type: "start",
-      position: { x: 100, y: 100 },
+      position: {
+        x: 100,
+        y: 100,
+      },
       data: {
         label: "Start",
       },
@@ -60,111 +63,155 @@ function WorkflowBuilderPage() {
   const [edges, setEdges] = useState([]);
 
 
-  // ============================================================
-  // WORKFLOW INFORMATION
-  // ============================================================
-
-  /*
-    If URL is:
-
-    /workflow-builder/new
-
-    this becomes null because the workflow
-    has not been created yet.
-
-    If URL is:
-
-    /workflow-builder/abc123
-
-    this becomes "abc123".
-  */
-  const [workflowId, setWorkflowId] = useState(
-    urlWorkflowId !== "new"
-      ? urlWorkflowId
-      : null
-  );
-
-  const [workflowName, setWorkflowName] = useState("");
-
-
-  // ============================================================
-  // LOADING STATE
-  // ============================================================
-
-  const [isLoading, setIsLoading] = useState(
-    urlWorkflowId !== "new"
-  );
-
-
-  // ============================================================
-  // SAVE STATE
-  // ============================================================
+  // ==========================================================
+  // SAVING STATE
+  // ==========================================================
 
   const [isSaving, setIsSaving] = useState(false);
 
   const [saveMessage, setSaveMessage] = useState("");
 
 
-  // ============================================================
+  // ==========================================================
+  // LOADING STATE
+  // ==========================================================
+
+  const [isLoading, setIsLoading] = useState(false);
+
+
+  // ==========================================================
+  // UPDATE CONDITION
+  // ==========================================================
+  //
+  // This function changes the condition configuration
+  // inside a Condition node.
+  //
+  // Example:
+  //
+  // data: {
+  //   label: "CONDITION",
+  //   condition: "contains_positive"
+  // }
+  //
+  // ==========================================================
+
+  const updateCondition = (nodeId, condition) => {
+
+    setNodes((prevNodes) =>
+      prevNodes.map((node) => {
+
+        if (node.id !== nodeId) {
+          return node;
+        }
+
+        return {
+          ...node,
+
+          data: {
+            ...node.data,
+            condition,
+          },
+        };
+
+      })
+    );
+  };
+
+
+  // ==========================================================
   // LOAD EXISTING WORKFLOW
-  // ============================================================
+  // ==========================================================
+  //
+  // If URL is:
+  //
+  // /workflow-builder/new
+  //
+  // we create a blank workflow.
+  //
+  // If URL is:
+  //
+  // /workflow-builder/64abc123...
+  //
+  // we fetch that workflow from MongoDB.
+  //
+  // ==========================================================
 
   useEffect(() => {
 
-    // "new" means there is nothing to load.
-    if (urlWorkflowId === "new") {
-      setIsLoading(false);
+    // New workflow → nothing to load
+    if (!workflowId || workflowId === "new") {
       return;
     }
 
 
     const loadWorkflow = async () => {
+
       try {
+
         setIsLoading(true);
         setSaveMessage("");
 
 
-        /*
-          Ask backend for the workflow whose ID
-          came from the URL.
-        */
-        const response = await getWorkflowById(
-          urlWorkflowId
-        );
+        const response =
+          await getWorkflowById(workflowId);
 
 
-        console.log(
-          "LOADED WORKFLOW:",
-          response
-        );
+        const workflow =
+          response.data;
 
 
-        /*
-          Backend response:
-
-          {
-            success: true,
-            message: "...",
-            data: workflow
-          }
-
-          So the actual workflow is response.data.
-        */
-        const workflow = response.data;
-
-
-        // Store workflow information
-        setWorkflowId(workflow._id);
+        // ==========================
+        // Load workflow name
+        // ==========================
 
         setWorkflowName(
-          workflow.name || ""
+          workflow.name || "My Workflow"
         );
 
 
-        // Restore saved canvas
-        setNodes(
-          workflow.nodes || []
-        );
+        // ==========================
+        // Load nodes
+        // ==========================
+        //
+        // MongoDB cannot store functions.
+        //
+        // Therefore, when we load the workflow,
+        // we attach updateCondition again.
+        //
+        // ==========================
+
+        const loadedNodes =
+          (workflow.nodes || []).map((node) => {
+
+            if (node.type === "condition") {
+
+              return {
+                ...node,
+
+                data: {
+                  ...node.data,
+
+                  // Default condition if older
+                  // workflow doesn't have one.
+                  condition:
+                    node.data?.condition ||
+                    "contains_positive",
+
+                  onChange: updateCondition,
+                },
+              };
+            }
+
+            return node;
+          });
+
+
+        setNodes(loadedNodes);
+
+
+        // ==========================
+        // Load edges
+        // ==========================
 
         setEdges(
           workflow.edges || []
@@ -179,35 +226,42 @@ function WorkflowBuilderPage() {
 
         setSaveMessage(
           error.message ||
-            "Failed to load workflow."
+          "Workflow not found"
         );
 
       } finally {
+
         setIsLoading(false);
+
       }
     };
 
 
     loadWorkflow();
 
-  }, [urlWorkflowId]);
+  }, [workflowId]);
 
 
-  // ============================================================
-  // ADD NEW NODE
-  // ============================================================
+  // ==========================================================
+  // ADD NODE
+  // ==========================================================
 
   const addNode = (type) => {
 
-    // Only one Start node is allowed
+    // ========================================================
+    // Only one Start node
+    // ========================================================
+
     if (type === "start") {
 
-      const hasStartNode = nodes.some(
-        (node) => node.type === "start"
-      );
+      const hasStartNode =
+        nodes.some(
+          (node) => node.type === "start"
+        );
 
 
       if (hasStartNode) {
+
         alert(
           "Only one Start node is allowed."
         );
@@ -217,8 +271,12 @@ function WorkflowBuilderPage() {
     }
 
 
+    // ========================================================
     // Create new node
+    // ========================================================
+
     const newNode = {
+
       id: Date.now().toString(),
 
       type,
@@ -229,8 +287,38 @@ function WorkflowBuilderPage() {
       },
 
       data: {
-        label: type.toUpperCase(),
+
+        label:
+          type === "start"
+            ? "Start"
+            : type.toUpperCase(),
+
+
+        // ====================================================
+        // AI configuration
+        // ====================================================
+
+        ...(type === "ai" && {
+          prompt: "",
+        }),
+
+
+        // ====================================================
+        // Condition configuration
+        // ====================================================
+
+        ...(type === "condition" && {
+
+          condition:
+            "contains_positive",
+
+          onChange:
+            updateCondition,
+
+        }),
+
       },
+
     };
 
 
@@ -241,9 +329,9 @@ function WorkflowBuilderPage() {
   };
 
 
-  // ============================================================
+  // ==========================================================
   // SAVE WORKFLOW
-  // ============================================================
+  // ==========================================================
 
   const handleSaveWorkflow = async () => {
 
@@ -254,80 +342,67 @@ function WorkflowBuilderPage() {
       setSaveMessage("");
 
 
-      let currentWorkflowId = workflowId;
+      // ======================================================
+      // Validate name
+      // ======================================================
+
+      if (!workflowName.trim()) {
+
+        setSaveMessage(
+          "Please enter a workflow name."
+        );
+
+        return;
+      }
 
 
-      // ========================================================
-      // CREATE NEW WORKFLOW
-      // ========================================================
+      // ======================================================
+      // Current workflow ID
+      // ======================================================
 
-      /*
-        This runs ONLY when workflowId is null.
+      let currentWorkflowId =
+        workflowId !== "new"
+          ? workflowId
+          : null;
 
-        That means we are currently on:
 
-        /workflow-builder/new
-      */
+      // ======================================================
+      // FIRST SAVE
+      // ======================================================
+      //
+      // If this is a new workflow,
+      // first create it in MongoDB.
+      //
+      // ======================================================
 
       if (!currentWorkflowId) {
 
         const createResponse =
           await createWorkflow({
+
             name:
-              workflowName.trim() ||
-              "My Workflow",
+              workflowName.trim(),
+
           });
 
 
-        /*
-          Backend returns:
-
-          {
-            success: true,
-            data: {
-              workflowId: "..."
-            }
-          }
-        */
-
         currentWorkflowId =
           createResponse.data.workflowId;
-
-
-        setWorkflowId(
-          currentWorkflowId
-        );
-
-
-        /*
-          Change URL from:
-
-          /workflow-builder/new
-
-          to:
-
-          /workflow-builder/<workflowId>
-
-          From this point onward,
-          this workflow is an EXISTING workflow.
-        */
-        navigate(
-          `/workflow-builder/${currentWorkflowId}`,
-          {
-            replace: true,
-          }
-        );
       }
 
 
-      // ========================================================
-      // SAVE NODES + EDGES
-      // ========================================================
+      // ======================================================
+      // SAVE NODES + EDGES + NAME
+      // ======================================================
 
       await saveWorkflow(
         currentWorkflowId,
         {
+          name:
+            workflowName.trim(),
+
           nodes,
+
           edges,
         }
       );
@@ -344,23 +419,21 @@ function WorkflowBuilderPage() {
         error
       );
 
-
       setSaveMessage(
         error.message ||
-          "Failed to save workflow."
+        "Failed to save workflow."
       );
 
     } finally {
 
       setIsSaving(false);
-
     }
   };
 
 
-  // ============================================================
+  // ==========================================================
   // LOADING SCREEN
-  // ============================================================
+  // ==========================================================
 
   if (isLoading) {
 
@@ -374,40 +447,48 @@ function WorkflowBuilderPage() {
   }
 
 
-  // ============================================================
+  // ==========================================================
   // UI
-  // ============================================================
+  // ==========================================================
 
   return (
 
     <div className="workflow-builder-page">
 
-      {/* ==========================
+      {/* ====================================================
           HEADER
-          ========================== */}
+          ==================================================== */}
 
-      <header className="workflow-builder-page__header">
+      <header
+        className="workflow-builder-page__header"
+      >
 
-        <h1 className="workflow-builder-page__title">
+        <h1
+          className="workflow-builder-page__title"
+        >
           Workflow Builder
         </h1>
 
 
-        {/* Workflow Name */}
+        {/* ==================================================
+            Workflow Name
+            ================================================== */}
 
         <input
           type="text"
-          placeholder="Workflow name"
           value={workflowName}
           onChange={(event) =>
             setWorkflowName(
               event.target.value
             )
           }
+          placeholder="Workflow name"
         />
 
 
-        {/* Save Button */}
+        {/* ==================================================
+            Save Button
+            ================================================== */}
 
         <button
           onClick={handleSaveWorkflow}
@@ -419,7 +500,9 @@ function WorkflowBuilderPage() {
         </button>
 
 
-        {/* Save Message */}
+        {/* ==================================================
+            Save Message
+            ================================================== */}
 
         {saveMessage && (
           <span>
@@ -430,15 +513,21 @@ function WorkflowBuilderPage() {
       </header>
 
 
-      {/* ==========================
-          MAIN LAYOUT
-          ========================== */}
+      {/* ====================================================
+          MAIN BODY
+          ==================================================== */}
 
-      <div className="workflow-builder-page__body">
+      <div
+        className="workflow-builder-page__body"
+      >
 
-        {/* LEFT SIDEBAR */}
+        {/* ==================================================
+            NODE PANEL
+            ================================================== */}
 
-        <div className="workflow-builder-page__panel">
+        <div
+          className="workflow-builder-page__panel"
+        >
 
           <NodePanel
             onAddNode={addNode}
@@ -447,15 +536,24 @@ function WorkflowBuilderPage() {
         </div>
 
 
-        {/* REACT FLOW CANVAS */}
+        {/* ==================================================
+            REACT FLOW CANVAS
+            ================================================== */}
 
-        <div className="workflow-builder-page__canvas">
+        <div
+          className="workflow-builder-page__canvas"
+        >
 
           <ReactFlowCanvas
+
             nodes={nodes}
+
             edges={edges}
+
             setNodes={setNodes}
+
             setEdges={setEdges}
+
           />
 
         </div>
