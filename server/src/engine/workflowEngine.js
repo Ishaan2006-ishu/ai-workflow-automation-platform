@@ -1,253 +1,313 @@
 /**
  * workflowEngine.js
  *
- * WHY THIS FILE EXISTS:
- * The Workflow Engine is the "brain" that decides HOW a workflow runs.
+ * The Workflow Engine is responsible for orchestrating
+ * workflow execution.
  *
- * Its job is orchestration:
- * - Find the Start node
- * - Execute nodes in order
- * - Pass previous output to the next node
- * - Follow normal edges
- * - Follow TRUE/FALSE branches from Condition nodes
+ * It:
+ * 1. Finds the Start node
+ * 2. Executes the current node
+ * 3. Reads the result of the current node
+ * 4. Finds the correct next edge
+ * 5. Continues until there is no next node
  *
- * It does not know about Express or MongoDB.
+ * For Condition nodes:
+ *
+ * result === true
+ *      ↓
+ * sourceHandle === "true"
+ *
+ * result === false
+ *      ↓
+ * sourceHandle === "false"
  */
 
 const { executeNode } = require("./nodeExecutor");
 
-/**
- * Find the Start node.
- */
+
+// ==========================================================
+// FIND START NODE
+// ==========================================================
+
 function findStartNode(nodes) {
-  const startNode = nodes.find(
-    (node) => node.type === "start"
-  );
+
+  const startNode =
+    nodes.find(
+      (node) => node.type === "start"
+    );
+
 
   if (!startNode) {
+
     throw new Error(
       "Workflow Engine Error: No start node found. Every workflow must contain exactly one node with type 'start'."
     );
+
   }
+
 
   return startNode;
 }
 
+
+// ==========================================================
+// FIND NEXT NODE
+// ==========================================================
+
 /**
- * Find the next node to execute.
+ * Finds the next node that should execute.
  *
- * For normal nodes:
+ * Normal nodes:
  *
- *     Start → AI
+ * Start → AI
  *
- * We simply follow the outgoing edge.
+ * Condition nodes:
  *
- * For Condition nodes:
+ * Condition TRUE
+ *      ↓
+ * edge.sourceHandle === "true"
  *
- *                 ┌── true
- *     Condition ──┤
- *                 └── false
- *
- * We use the Condition node's result to decide
- * which sourceHandle to follow.
+ * Condition FALSE
+ *      ↓
+ * edge.sourceHandle === "false"
  */
 function findNextNode(
   currentNode,
   nodes,
   edges,
-  previousOutput
+  currentOutput
 ) {
-  // ---------------------------------------------------------
-  // Find all outgoing edges from the current node
-  // ---------------------------------------------------------
 
-  const outgoingEdges = edges.filter(
-    (edge) => edge.source === currentNode.id
-  );
+  let outgoingEdge;
 
-  // No outgoing edge means workflow has finished.
-  if (outgoingEdges.length === 0) {
-    return null;
-  }
 
-  // =========================================================
+  // ========================================================
   // CONDITION NODE
-  // =========================================================
+  // ========================================================
 
   if (currentNode.type === "condition") {
-    // The Condition node should return:
-    //
-    // {
-    //   result: true
-    // }
-    //
-    // or:
-    //
-    // {
-    //   result: false
-    // }
-
-    if (
-      !previousOutput ||
-      typeof previousOutput.result !== "boolean"
-    ) {
-      throw new Error(
-        `Workflow Engine Error: Condition node "${currentNode.id}" did not produce a valid boolean result.`
-      );
-    }
 
     const conditionResult =
-      previousOutput.result;
+      currentOutput &&
+      currentOutput.result;
 
-    // Convert boolean to the React Flow handle ID.
-    //
-    // true  → "true"
-    // false → "false"
-    const requiredHandle = conditionResult
-      ? "true"
-      : "false";
 
-    console.log(
-      `[WorkflowEngine] Condition "${currentNode.id}" result: ${conditionResult}`
-    );
+    const requiredHandle =
+      conditionResult
+        ? "true"
+        : "false";
+
 
     console.log(
-      `[WorkflowEngine] Following "${requiredHandle}" branch`
+      `[WorkflowEngine] Condition result: ${conditionResult}`
     );
 
-    // Find the edge connected to the correct handle.
-    const selectedEdge = outgoingEdges.find(
-      (edge) =>
-        edge.sourceHandle === requiredHandle
+    console.log(
+      `[WorkflowEngine] Looking for "${requiredHandle}" branch`
     );
 
-    if (!selectedEdge) {
-      throw new Error(
-        `Workflow Engine Error: Condition node "${currentNode.id}" has no "${requiredHandle}" outgoing edge.`
+
+    outgoingEdge =
+      edges.find(
+        (edge) =>
+          edge.source === currentNode.id &&
+          edge.sourceHandle === requiredHandle
       );
-    }
 
-    const nextNode = nodes.find(
-      (node) =>
-        node.id === selectedEdge.target
-    );
-
-    if (!nextNode) {
-      throw new Error(
-        `Workflow Engine Error: Edge references missing target node "${selectedEdge.target}".`
-      );
-    }
-
-    return nextNode;
   }
 
-  // =========================================================
+
+  // ========================================================
   // NORMAL NODE
-  // =========================================================
+  // ========================================================
 
-  // For Start, AI, Notification, etc.
-  //
-  // We currently follow the first outgoing edge.
-  const outgoingEdge = outgoingEdges[0];
+  else {
 
-  const nextNode = nodes.find(
-    (node) =>
-      node.id === outgoingEdge.target
-  );
+    outgoingEdge =
+      edges.find(
+        (edge) =>
+          edge.source === currentNode.id
+      );
+
+  }
+
+
+  // ========================================================
+  // NO NEXT NODE
+  // ========================================================
+
+  if (!outgoingEdge) {
+
+    console.log(
+      `[WorkflowEngine] No next node from ${currentNode.id}`
+    );
+
+    return null;
+
+  }
+
+
+  // ========================================================
+  // FIND TARGET NODE
+  // ========================================================
+
+  const nextNode =
+    nodes.find(
+      (node) =>
+        node.id === outgoingEdge.target
+    );
+
 
   if (!nextNode) {
+
     throw new Error(
       `Workflow Engine Error: Edge references missing target node "${outgoingEdge.target}".`
     );
+
   }
+
+
+  console.log(
+    `[WorkflowEngine] Next node: ${nextNode.id} (${nextNode.type})`
+  );
+
 
   return nextNode;
 }
 
-/**
- * Execute the current node.
- */
+
+// ==========================================================
+// EXECUTE CURRENT NODE
+// ==========================================================
+
 async function executeCurrentNode(
   node,
   previousOutput
 ) {
+
+  console.log(
+    `[WorkflowEngine] Executing node: ${node.id} (${node.type})`
+  );
+
+
   return executeNode(
     node,
     previousOutput
   );
 }
 
-/**
- * Validate workflow before execution.
- */
+
+// ==========================================================
+// VALIDATE WORKFLOW
+// ==========================================================
+
 function validateWorkflow(workflow) {
+
   if (!workflow) {
+
     throw new Error(
       "Workflow Engine Error: Workflow object is null or undefined."
     );
+
   }
+
 
   if (
     !Array.isArray(workflow.nodes) ||
     workflow.nodes.length === 0
   ) {
+
     throw new Error(
       "Workflow Engine Error: Workflow must contain at least one node."
     );
+
   }
 
+
   if (!Array.isArray(workflow.edges)) {
+
     throw new Error(
       "Workflow Engine Error: Workflow must contain an edges array (it may be empty)."
     );
+
   }
+
 }
 
-/**
- * Execute the complete workflow.
- */
+
+// ==========================================================
+// EXECUTE WORKFLOW
+// ==========================================================
+
 async function executeWorkflow(workflow) {
+
   const executedNodes = [];
 
+
   try {
+
+    // ======================================================
+    // VALIDATE
+    // ======================================================
+
     validateWorkflow(workflow);
 
-    const { nodes, edges } = workflow;
 
-    // -------------------------------------------------------
-    // Start from the Start node
-    // -------------------------------------------------------
+    const {
+      nodes,
+      edges,
+    } = workflow;
 
-    let currentNode = findStartNode(nodes);
+
+    // ======================================================
+    // FIND START NODE
+    // ======================================================
+
+    let currentNode =
+      findStartNode(nodes);
+
+
+    // ======================================================
+    // PREVIOUS NODE OUTPUT
+    // ======================================================
 
     let previousOutput = null;
 
-    // -------------------------------------------------------
-    // Execute nodes one by one
-    // -------------------------------------------------------
+
+    // ======================================================
+    // EXECUTION LOOP
+    // ======================================================
 
     while (currentNode) {
-      console.log(
-        `[WorkflowEngine] Executing node: ${currentNode.id} (${currentNode.type})`
-      );
 
-      // Execute current node.
+      // ----------------------------------------------------
+      // Execute current node
+      // ----------------------------------------------------
+
       previousOutput =
         await executeCurrentNode(
           currentNode,
           previousOutput
         );
 
-      // Remember that this node executed.
+
+      // ----------------------------------------------------
+      // Record executed node
+      // ----------------------------------------------------
+
       executedNodes.push(
         currentNode.id
       );
 
-      // Find the next node.
+
+      // ----------------------------------------------------
+      // Find next node
       //
       // IMPORTANT:
-      // We pass previousOutput here because
-      // Condition nodes need its `result`.
+      // We pass previousOutput because Condition
+      // branching depends on result.
+      // ----------------------------------------------------
+
       currentNode =
         findNextNode(
           currentNode,
@@ -255,38 +315,74 @@ async function executeWorkflow(workflow) {
           edges,
           previousOutput
         );
+
     }
 
-    // -------------------------------------------------------
-    // Successful execution
-    // -------------------------------------------------------
+
+    // ======================================================
+    // SUCCESS
+    // ======================================================
+
+    console.log(
+      "[WorkflowEngine] Workflow completed successfully."
+    );
+
 
     return {
+
       success: true,
-      output: previousOutput,
+
+      output:
+        previousOutput,
+
       executedNodes,
+
       status: "SUCCESS",
+
     };
 
   } catch (error) {
+
+    // ======================================================
+    // FAILURE
+    // ======================================================
 
     console.error(
       "[WorkflowEngine] Execution failed:",
       error
     );
 
+
     return {
+
       success: false,
-      output: error.message,
+
+      output:
+        error.message,
+
       executedNodes,
+
       status: "FAILED",
+
     };
+
   }
+
 }
 
+
+// ==========================================================
+// EXPORTS
+// ==========================================================
+
 module.exports = {
+
   executeWorkflow,
+
   findStartNode,
+
   findNextNode,
+
   executeCurrentNode,
+
 };

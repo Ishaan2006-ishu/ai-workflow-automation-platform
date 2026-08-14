@@ -39,7 +39,8 @@ function WorkflowBuilderPage() {
   // WORKFLOW NAME
   // ==========================================================
 
-  const [workflowName, setWorkflowName] = useState("My Workflow");
+  const [workflowName, setWorkflowName] =
+    useState("My Workflow");
 
 
   // ==========================================================
@@ -67,35 +68,29 @@ function WorkflowBuilderPage() {
   // SAVING STATE
   // ==========================================================
 
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSaving, setIsSaving] =
+    useState(false);
 
-  const [saveMessage, setSaveMessage] = useState("");
+  const [saveMessage, setSaveMessage] =
+    useState("");
 
 
   // ==========================================================
   // LOADING STATE
   // ==========================================================
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] =
+    useState(false);
 
 
   // ==========================================================
   // UPDATE CONDITION
   // ==========================================================
-  //
-  // This function changes the condition configuration
-  // inside a Condition node.
-  //
-  // Example:
-  //
-  // data: {
-  //   label: "CONDITION",
-  //   condition: "contains_positive"
-  // }
-  //
-  // ==========================================================
 
-  const updateCondition = (nodeId, condition) => {
+  const updateCondition = (
+    nodeId,
+    condition
+  ) => {
 
     setNodes((prevNodes) =>
       prevNodes.map((node) => {
@@ -121,25 +116,14 @@ function WorkflowBuilderPage() {
   // ==========================================================
   // LOAD EXISTING WORKFLOW
   // ==========================================================
-  //
-  // If URL is:
-  //
-  // /workflow-builder/new
-  //
-  // we create a blank workflow.
-  //
-  // If URL is:
-  //
-  // /workflow-builder/64abc123...
-  //
-  // we fetch that workflow from MongoDB.
-  //
-  // ==========================================================
 
   useEffect(() => {
 
-    // New workflow → nothing to load
-    if (!workflowId || workflowId === "new") {
+    // New workflow
+    if (
+      !workflowId ||
+      workflowId === "new"
+    ) {
       return;
     }
 
@@ -153,7 +137,9 @@ function WorkflowBuilderPage() {
 
 
         const response =
-          await getWorkflowById(workflowId);
+          await getWorkflowById(
+            workflowId
+          );
 
 
         const workflow =
@@ -165,45 +151,43 @@ function WorkflowBuilderPage() {
         // ==========================
 
         setWorkflowName(
-          workflow.name || "My Workflow"
+          workflow.name ||
+          "My Workflow"
         );
 
 
         // ==========================
         // Load nodes
         // ==========================
-        //
-        // MongoDB cannot store functions.
-        //
-        // Therefore, when we load the workflow,
-        // we attach updateCondition again.
-        //
-        // ==========================
 
         const loadedNodes =
-          (workflow.nodes || []).map((node) => {
+          (workflow.nodes || []).map(
+            (node) => {
 
-            if (node.type === "condition") {
+              if (
+                node.type === "condition"
+              ) {
 
-              return {
-                ...node,
+                return {
+                  ...node,
 
-                data: {
-                  ...node.data,
+                  data: {
+                    ...node.data,
 
-                  // Default condition if older
-                  // workflow doesn't have one.
-                  condition:
-                    node.data?.condition ||
-                    "contains_positive",
+                    condition:
+                      node.data?.condition ||
+                      "contains_positive",
 
-                  onChange: updateCondition,
-                },
-              };
+                    onChange:
+                      updateCondition,
+                  },
+                };
+
+              }
+
+              return node;
             }
-
-            return node;
-          });
+          );
 
 
         setNodes(loadedNodes);
@@ -256,7 +240,8 @@ function WorkflowBuilderPage() {
 
       const hasStartNode =
         nodes.some(
-          (node) => node.type === "start"
+          (node) =>
+            node.type === "start"
         );
 
 
@@ -343,7 +328,7 @@ function WorkflowBuilderPage() {
 
 
       // ======================================================
-      // Validate name
+      // Validate workflow name
       // ======================================================
 
       if (!workflowName.trim()) {
@@ -369,11 +354,6 @@ function WorkflowBuilderPage() {
       // ======================================================
       // FIRST SAVE
       // ======================================================
-      //
-      // If this is a new workflow,
-      // first create it in MongoDB.
-      //
-      // ======================================================
 
       if (!currentWorkflowId) {
 
@@ -392,6 +372,43 @@ function WorkflowBuilderPage() {
 
 
       // ======================================================
+      // REMOVE FRONTEND-ONLY FUNCTIONS
+      // ======================================================
+      //
+      // React needs `onChange`.
+      //
+      // MongoDB does NOT need it.
+      //
+      // We remove it before sending the nodes
+      // to the backend.
+      //
+      // condition remains:
+      //
+      // data: {
+      //   condition: "contains_positive"
+      // }
+      //
+      // ======================================================
+
+      const nodesToSave =
+        nodes.map((node) => {
+
+          const {
+            onChange,
+            ...cleanData
+          } = node.data || {};
+
+
+          return {
+            ...node,
+
+            data: cleanData,
+          };
+
+        });
+
+
+      // ======================================================
       // SAVE NODES + EDGES + NAME
       // ======================================================
 
@@ -401,7 +418,8 @@ function WorkflowBuilderPage() {
           name:
             workflowName.trim(),
 
-          nodes,
+          nodes:
+            nodesToSave,
 
           edges,
         }
@@ -427,6 +445,7 @@ function WorkflowBuilderPage() {
     } finally {
 
       setIsSaving(false);
+
     }
   };
 
@@ -439,9 +458,11 @@ function WorkflowBuilderPage() {
 
     return (
       <div>
+
         <h2>
           Loading workflow...
         </h2>
+
       </div>
     );
   }
@@ -545,15 +566,10 @@ function WorkflowBuilderPage() {
         >
 
           <ReactFlowCanvas
-
             nodes={nodes}
-
             edges={edges}
-
             setNodes={setNodes}
-
             setEdges={setEdges}
-
           />
 
         </div>
