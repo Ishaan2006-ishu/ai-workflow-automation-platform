@@ -1,21 +1,44 @@
 // src/routes/PublicRoute.jsx
 
 import { Navigate, Outlet } from "react-router-dom";
+
 import useAuth from "../hooks/useAuth";
 
-/**
- * Allows only unauthenticated users to access routes
- * like Login and Register.
- */
-const PublicRoute = () => {
-  const { isAuthenticated } = useAuth();
 
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+const PublicRoute = () => {
+
+  const {
+    isAuthenticated,
+    isAuthLoading,
+  } = useAuth();
+
+
+  if (isAuthLoading) {
+
+    return (
+      <div>
+        Checking authentication...
+      </div>
+    );
+
   }
 
-  // Render nested routes (Login/Register)
+
+  if (isAuthenticated) {
+
+    return (
+      <Navigate
+        to="/dashboard"
+        replace
+      />
+    );
+
+  }
+
+
   return <Outlet />;
+
 };
+
 
 export default PublicRoute;

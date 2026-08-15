@@ -1,6 +1,7 @@
 /**
  * @file executionService.js
- * @description Business logic for workflow execution and execution history.
+ *
+ * Business logic for workflow execution and execution history.
  */
 
 const Workflow = require("../models/workflowModel");
@@ -11,45 +12,70 @@ const {
 } = require("../engine/workflowEngine");
 
 
-/**
- * Execute a workflow and save the execution result.
- */
+// ==========================================================
+// EXECUTE WORKFLOW
+// ==========================================================
+
 async function executeWorkflowById(
   workflowId,
-  userId
+  userId,
+  input = ""
 ) {
 
+  // --------------------------------------------------------
   // Find workflow owned by current user
+  // --------------------------------------------------------
+
   const workflow = await Workflow.findOne({
     _id: workflowId,
     userId,
   });
 
   if (!workflow) {
-    throw new Error("Workflow not found.");
+    throw new Error(
+      "Workflow not found."
+    );
   }
 
 
+  // --------------------------------------------------------
   // Record start time
+  // --------------------------------------------------------
+
   const startedAt = new Date();
 
 
+  // --------------------------------------------------------
   // Execute workflow
+  // --------------------------------------------------------
+
   const result =
-    await executeWorkflow(workflow);
+    await executeWorkflow(
+      workflow,
+      input
+    );
 
 
+  // --------------------------------------------------------
   // Record completion time
+  // --------------------------------------------------------
+
   const completedAt = new Date();
 
 
+  // --------------------------------------------------------
   // Calculate duration
+  // --------------------------------------------------------
+
   const duration =
     completedAt.getTime() -
     startedAt.getTime();
 
 
+  // --------------------------------------------------------
   // Save execution
+  // --------------------------------------------------------
+
   const execution =
     await Execution.create({
       workflowId: workflow._id,
@@ -63,6 +89,10 @@ async function executeWorkflowById(
     });
 
 
+  // --------------------------------------------------------
+  // Return execution result
+  // --------------------------------------------------------
+
   return {
     ...result,
     executionId: execution._id,
@@ -73,9 +103,10 @@ async function executeWorkflowById(
 }
 
 
-/**
- * Fetch execution history for the logged-in user.
- */
+// ==========================================================
+// EXECUTION HISTORY
+// ==========================================================
+
 async function getExecutionHistory(userId) {
 
   const executions =

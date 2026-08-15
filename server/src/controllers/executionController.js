@@ -1,11 +1,6 @@
 /**
  * @file executionController.js
- * @description Controller for Workflow Execution HTTP endpoints.
  *
- * Handles only HTTP concerns (request & response).
- * All execution-related business logic is delegated to the Execution Service.
- *
- * Architecture:
  * Route → Controller → Service → Workflow Engine
  */
 
@@ -19,32 +14,41 @@ const {
   sendNotFound,
 } = require("../utils/responseHelper");
 
+
 /**
  * POST /api/workflows/:id/execute
  *
- * Starts execution of a workflow owned by the authenticated user.
+ * Body:
+ * {
+ *   "input": "text provided by the user"
+ * }
  */
 const executeWorkflow = async (req, res) => {
   try {
-    // Get workflow ID from the URL.
+
     const workflowId = req.params.id;
 
-    // Get authenticated user's ID from JWT middleware.
     const userId = req.user.userId;
 
-    // Service finds the workflow and sends it to workflowEngine.
+    // Runtime input provided by the user.
+    const { input = "" } = req.body;
+
+
     const result = await executeWorkflowById(
       workflowId,
-      userId
+      userId,
+      input
     );
+
 
     return sendSuccess(
       res,
       "Workflow executed successfully",
       result
     );
+
   } catch (error) {
-    // Invalid MongoDB ObjectId.
+
     if (error.name === "CastError") {
       return sendNotFound(
         res,
@@ -52,7 +56,7 @@ const executeWorkflow = async (req, res) => {
       );
     }
 
-    // Workflow does not exist or does not belong to user.
+
     if (error.message === "Workflow not found.") {
       return sendNotFound(
         res,
@@ -60,10 +64,12 @@ const executeWorkflow = async (req, res) => {
       );
     }
 
+
     console.error(
       "[ExecutionController] executeWorkflow:",
       error
     );
+
 
     return sendError(
       res,
@@ -72,6 +78,7 @@ const executeWorkflow = async (req, res) => {
     );
   }
 };
+
 
 module.exports = {
   executeWorkflow,
