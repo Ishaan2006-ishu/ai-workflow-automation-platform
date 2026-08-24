@@ -98,7 +98,20 @@ const validateEdge = (edge) => {
  * PUT /api/workflows/:id
  */
 const validateSaveWorkflow = (req, res, next) => {
-  const { nodes, edges } = req.body;
+  const { nodes, edges, name } = req.body;
+
+  // MVP fix (Issue 1 — workflow naming): a workflow must always have a
+  // name, mirroring the rule already enforced on create. Validating it
+  // here — before saveWorkflowService ever runs — means a malformed or
+  // missing name is rejected with a clear 400 instead of silently
+  // falling back or corrupting the stored document.
+  if (typeof name !== "string" || name.trim().length === 0) {
+    return sendError(res, "Workflow name is required.", 400);
+  }
+
+  if (name.trim().length > 150) {
+    return sendError(res, "Workflow name cannot exceed 150 characters.", 400);
+  }
 
   if (!Array.isArray(nodes)) {
     return sendError(res, "'nodes' must be an array.", 400);

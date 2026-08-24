@@ -1,33 +1,33 @@
 /**
  * @file executionModel.js
- * @description Mongoose model for workflow execution records.
+ * @description Mongoose model for a single Workflow Execution record.
  *
- * One Execution document represents ONE attempt to run a workflow.
+ * WHY THIS FILE EXISTS:
+ * Every time a user clicks "Run Workflow", the engine walks the graph
+ * and produces a result — but that result is ephemeral unless something
+ * saves it. This model is that persistence layer: one document per run,
+ * so the Execution History page has real data to show instead of a
+ * permanently-empty stub.
  *
- * Example:
+ * WHO WRITES THIS MODEL:
+ * Only executionService.js creates Execution documents (after calling
+ * the pure workflowEngine.executeWorkflow()). The engine itself never
+ * touches the database — this keeps the "Engine → Executor → Node
+ * Files" layer free of Mongo/Express concerns, per the locked
+ * architecture.
  *
- * Workflow:
- * Start → AI → Condition → Notification
- *
- * When the user executes it, we create one Execution document
- * containing the result of that particular run.
+ * Architecture: Model layer — no business logic lives here.
  */
 
 const mongoose = require("mongoose");
-
 const { Schema, model } = mongoose;
-
-/* ============================================================
-   EXECUTION SCHEMA
-   ============================================================ */
 
 const ExecutionSchema = new Schema(
   {
     /**
-     * Workflow that was executed.
-     *
-     * We keep a reference instead of copying the entire workflow
-     * definition into the execution document.
+     * Which workflow was run. Kept as a reference (not embedded) so
+     * history rows stay lightweight even for workflows with large
+     * node/edge graphs.
      */
     workflowId: {
       type: Schema.Types.ObjectId,
@@ -37,10 +37,21 @@ const ExecutionSchema = new Schema(
     },
 
     /**
-     * User who executed the workflow.
-     *
-     * This allows us to show only the authenticated user's
-     * execution history.
+     * Denormalized copy of the workflow's name AT THE TIME OF EXECUTION.
+     * WHY DENORMALIZE: If the user later renames or deletes the source
+     * workflow, past history rows should still read sensibly ("Customer
+     * Feedback Automation ran at 3:04pm") instead of showing a blank or
+     * throwing a lookup error for a workflow that no longer exists.
+     */
+    workflowName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    /**
+     * The user who triggered this run. Used for ownership-scoped
+     * history queries, exactly like Workflow.userId.
      */
     userId: {
       type: Schema.Types.ObjectId,
@@ -50,13 +61,8 @@ const ExecutionSchema = new Schema(
     },
 
     /**
-     * Final execution status.
-     *
-     * SUCCESS:
-     * The complete workflow path finished successfully.
-     *
-     * FAILED:
-     * A node failed during execution.
+     * Mirrors the engine's own status field so the API/UI never have to
+     * re-derive success/failure from anything else.
      */
     status: {
       type: String,
@@ -65,57 +71,52 @@ const ExecutionSchema = new Schema(
     },
 
     /**
-     * Output produced by the last executed node.
-     *
-     * Mixed is used because different nodes can return
-     * different kinds of data.
+     * The raw text the user typed into the "Run Workflow" input box.
+     * Stored so a history row is self-explanatory without needing to
+     * re-open the workflow builder.
      */
-    output: {
-      type: Schema.Types.Mixed,
-      default: null,
+    input: {
+      type: String,
+      default: "",
     },
 
     /**
-     * IDs of nodes executed during this run.
-     *
-     * Example:
-     *
-     * [
-     *   "1",
-     *   "1786583408132",
-     *   "1786586083836",
-     *   "1786586230441"
-     * ]
+     * A short, human-readable summary of what the run produced —
+     * e.g. the AI node's generated text, or the notification message
+     * that was created. Built by executionService.js from the engine's
+     * full step-by-step result (see workflowEngine.js's `stepResults`).
+     */
+    output: {
+      type: String,
+      default: "",
+    },
+
+    /**
+     * Ordered list of node ids that were actually executed, exactly as
+     * returned by workflowEngine.executeWorkflow(). Lets the history UI
+     * show which branch a run took (e.g. condition -> notification vs.
+     * condition -> ai).
      */
     executedNodes: {
       type: [String],
       default: [],
     },
 
-    /**
-     * Time when execution started.
-     */
-    startedAt: {
+    startTime: {
+      type: Date,
+      required: true,
+    },
+
+    completionTime: {
       type: Date,
       required: true,
     },
 
     /**
-     * Time when execution finished.
-     */
-    completedAt: {
-      type: Date,
-      required: true,
-    },
-
-    /**
-     * Total execution time in milliseconds.
-     *
-     * Example:
-     *
-     * 4320
-     *
-     * means the workflow took 4.32 seconds.
+     * Duration in milliseconds (completionTime - startTime). Stored
+     * explicitly rather than computed on every read, since it's cheap
+     * to compute once and this is a field the history UI displays for
+     * every single row.
      */
     duration: {
       type: Number,
@@ -123,23 +124,17 @@ const ExecutionSchema = new Schema(
     },
   },
   {
-    /**
-     * MongoDB automatically adds:
-     *
-     * createdAt
-     * updatedAt
-     */
     timestamps: true,
   }
 );
 
-/* ============================================================
-   MODEL
-   ============================================================ */
+/**
+ * Compound index: history is always queried "give me this user's runs,
+ * most recent first" — this index makes that query efficient without
+ * needing to touch every Execution document in the collection.
+ */
+ExecutionSchema.index({ userId: 1, createdAt: -1 });
 
-const Execution = model(
-  "Execution",
-  ExecutionSchema
-);
+const Execution = model("Execution", ExecutionSchema);
 
 module.exports = Execution;

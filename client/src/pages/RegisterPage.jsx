@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { register } from "../api/authApi";
+import "./AuthPage.css";
 
 const RegisterPage = () => {
   const navigate = useNavigate();

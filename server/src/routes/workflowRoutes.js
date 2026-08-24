@@ -10,7 +10,12 @@ const express = require("express");
 const router = express.Router();
 
 // Middleware
-const { protect } = require("../middleware/authMiddleware");
+const {protect}= require("../middleware/authMiddleware");
+
+
+
+
+
 
 // Validators
 const {
@@ -20,17 +25,13 @@ const {
 } = require("../validators/workflowValidator");
 
 // Controller
-const {
-  createWorkflow,
-  getWorkflows,
-  getWorkflow,
-  saveWorkflow,
-  deleteWorkflow,
-} = require("../controllers/workflowController");
+const { createWorkflow,getWorkflows,  getWorkflow,saveWorkflow,deleteWorkflow} = require("../controllers/workflowController");
 
-const {
-  executeWorkflow,
-} = require("../controllers/executionController");
+// Execution controller — kept in its own file/service (per the locked
+// Routes -> Controllers -> Services -> Engine architecture) but the
+// HTTP route itself is naturally nested here, under the workflow it
+// belongs to: POST /api/workflows/:id/execute.
+const { executeWorkflowRoute } = require("../controllers/executionController");
 
 /**
  * POST /api/workflows
@@ -49,46 +50,19 @@ router.post(
   createWorkflow
 );
 
-/**
- * GET /api/workflows
- */
+
 router.get("/", protect, getWorkflows);
-
-/**
- * GET /api/workflows/:id
- */
 router.get("/:id", protect, getWorkflow);
-
-/**
- * PUT /api/workflows/:id
- */
-router.put(
-  "/:id",
-  protect,
-  validateSaveWorkflow,
-  saveWorkflow
-);
-
-/**
- * DELETE /api/workflows/:id
- */
-router.delete(
-  "/:id",
-  protect,
-  deleteWorkflow
-);
+router.put("/:id", protect, validateSaveWorkflow, saveWorkflow);
+router.delete("/:id", protect, deleteWorkflow);
 
 /**
  * POST /api/workflows/:id/execute
+ * Body: { input?: string }
  *
- * Middleware Flow:
- * 1. protect
- * 2. executeWorkflow controller
+ * Runs the saved workflow graph and persists an Execution record
+ * (plus a Notification record, if the run triggers one).
  */
-router.post(
-  "/:id/execute",
-  protect,
-  executeWorkflow
-);
+router.post("/:id/execute", protect, executeWorkflowRoute);
 
 module.exports = router;

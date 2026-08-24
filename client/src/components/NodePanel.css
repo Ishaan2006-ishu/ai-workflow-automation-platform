@@ -38,11 +38,17 @@
 }
 
 .node-panel__title {
-  margin: 0 0 12px 4px;
+  margin: 0 0 4px 4px;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.node-panel__hint {
+  margin: 0 0 12px 4px;
+  font-size: 11.5px;
   color: var(--text-secondary);
 }
 
@@ -75,6 +81,11 @@
   border-color: var(--card-border-hover);
   box-shadow: 0 1px 4px rgba(16, 24, 40, 0.08);
   transform: translateY(-1px);
+}
+
+.node-card:focus-visible {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
 }
 
 /* Icon placeholder: a small colored badge rather than a real icon

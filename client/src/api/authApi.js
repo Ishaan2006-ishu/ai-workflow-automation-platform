@@ -54,7 +54,7 @@ export const register = async (name, email, password) => {
     // without needing to know anything about axios's error shape.
     const message =
       error.response?.data?.message || "Registration failed. Please try again.";
-    throw new Error(message);
+    throw new Error(message, { cause: error });
   }
 };
 
@@ -87,6 +87,6 @@ export const login = async (email, password) => {
     // problem — the fallback message covers that case too.
     const message =
       error.response?.data?.message || "Login failed. Please try again.";
-    throw new Error(message);
+    throw new Error(message, { cause: error });
   }
 };

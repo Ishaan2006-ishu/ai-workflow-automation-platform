@@ -1,56 +1,25 @@
 /**
  * @file executionRoutes.js
- * @description Routes for workflow execution history.
+ * @description Express router for the top-level Execution History
+ * endpoint (spans ALL of a user's workflows, not one — that's why it's
+ * mounted separately from workflowRoutes.js at /api/executions rather
+ * than nested under a single workflow).
  *
- * Architecture:
- *
- * Route
- *   ↓
- * Authentication Middleware
- *   ↓
- * Execution History Controller
+ * Mounted in app.js:
+ * app.use("/api/executions", executionRoutes);
  */
 
 const express = require("express");
-
 const router = express.Router();
 
-
-// ==========================================================
-// MIDDLEWARE
-// ==========================================================
-
-const {
-  protect,
-} = require("../middleware/authMiddleware");
-
-
-// ==========================================================
-// CONTROLLER
-// ==========================================================
-
-const {
-  getExecutions,
-} = require("../controllers/executionHistoryController");
-
-
-// ==========================================================
-// GET EXECUTION HISTORY
-// ==========================================================
+const { protect } = require("../middleware/authMiddleware");
+const { getExecutionHistory } = require("../controllers/executionController");
 
 /**
  * GET /api/executions
- *
- * Returns execution history belonging
- * to the authenticated user.
- *
- * Authentication required.
+ * Returns the authenticated user's full execution history, most
+ * recent first.
  */
-router.get(
-  "/",
-  protect,
-  getExecutions
-);
-
+router.get("/", protect, getExecutionHistory);
 
 module.exports = router;

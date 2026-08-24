@@ -1,0 +1,64 @@
+/* src/components/WorkflowCard.css */
+
+.workflow-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+  transition: box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.workflow-card:hover {
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.1);
+  transform: translateY(-1px);
+}
+
+.workflow-card-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2328;
+}
+
+.workflow-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.workflow-card-btn {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.workflow-card-btn--edit {
+  color: var(--accent, #aa3bff);
+  border-color: var(--accent-border, #d9b3ff);
+}
+
+.workflow-card-btn--edit:hover {
+  background: var(--accent-bg, #f5edff);
+}
+
+.workflow-card-btn--delete {
+  color: #b42318;
+  border-color: #fecdca;
+}
+
+.workflow-card-btn--delete:hover {
+  background: #fef3f2;
+}
+
+.workflow-card-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

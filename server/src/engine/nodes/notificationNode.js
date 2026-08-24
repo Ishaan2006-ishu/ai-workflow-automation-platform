@@ -42,20 +42,11 @@
  * empty/unreadable previousOutput is not, by itself, an error condition
  * for THIS node.
  */
+const { extractTextFromPreviousOutput } = require("./nodeOutputUtils");
+
 function extractNotificationText(previousOutput) {
-  if (!previousOutput) {
-    return "Workflow step completed.";
-  }
-
-  if (typeof previousOutput.output === "string" && previousOutput.output.trim().length > 0) {
-    return previousOutput.output;
-  }
-
-  if (typeof previousOutput.message === "string" && previousOutput.message.trim().length > 0) {
-    return previousOutput.message;
-  }
-
-  return "Workflow step completed.";
+  const text = extractTextFromPreviousOutput(previousOutput);
+  return text.trim().length > 0 ? text : "Workflow step completed.";
 }
 
 /**
@@ -87,7 +78,18 @@ async function executeNotificationNode(node, previousOutput) {
     );
   }
 
-  const notificationText = extractNotificationText(previousOutput);
+  // MVP addition: a workflow author can optionally set a fixed message
+  // in the builder's node config panel (node.data.message), e.g.
+  // "Positive customer feedback detected." When present, it takes
+  // priority over auto-extracting text from the previous node's
+  // output — an explicit author-provided message is more useful to a
+  // real user than a raw echo of whatever the AI node generated.
+  const customMessage =
+    node.data && typeof node.data.message === "string" && node.data.message.trim().length > 0
+      ? node.data.message.trim()
+      : null;
+
+  const notificationText = customMessage || extractNotificationText(previousOutput);
 
   // Shaped to match the Phase 3 Notifications schema fields we CAN
   // populate at this layer. `createdAt` is generated here (rather than

@@ -1,8 +1,9 @@
 /* src/pages/WorkflowBuilderPage.css */
 
-/* Full-viewport-height column: header on top, panel+canvas row filling
-   the rest. min-height: 0 on the row is what allows its flex children
-   (the canvas) to actually fill height instead of being pushed out. */
+/* Full-viewport-height column: navbar + header on top, panel+canvas+side
+   row filling the rest. min-height: 0 on the row is what allows its
+   flex children (the canvas) to actually fill height instead of being
+   pushed out. */
 .workflow-builder-page {
   display: flex;
   flex-direction: column;
@@ -10,22 +11,135 @@
   box-sizing: border-box;
 }
 
+.workflow-builder-page__status {
+  padding: 40px 24px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.workflow-builder-page__status--error {
+  color: #b42318;
+}
+
 /* ---------- Header ---------- */
 
+/* Bugfix (Issue 4 — invisible workflow name): this header previously
+   had no explicit background, so it silently inherited the app's
+   global `--bg` CSS variable — which flips to near-black under
+   `prefers-color-scheme: dark` (see index.css). The title text color
+   below was hardcoded dark (#1f2328), so on a dark-mode visitor's
+   browser this became dark text on a near-black background: nearly
+   unreadable. Per the fix requirements, the header is meant to look
+   like a dark toolbar (a deliberate, n8n/Zapier-style design), so
+   rather than removing the dark look, it's pinned to an explicit,
+   fixed dark color here — independent of OS theme — and every piece
+   of text/controls inside it is set to a color with real contrast
+   against that fixed background. */
 .workflow-builder-page__header {
   flex-shrink: 0;
   padding: 10px 20px;
-  border-bottom: 5px solid #e5e7eb;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-sizing: border-box;
+  background: #1a1c24;
+  color-scheme: dark;
 }
 
-.workflow-builder-page__title {
-  margin: 0;
+.workflow-builder-page__header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  flex: 1;
+}
+
+.workflow-builder-page__back-btn {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: transparent;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: #f3f4f6;
+}
+
+.workflow-builder-page__back-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Editable workflow name (Issue 1 + Issue 4 combined): a real text
+   input, not static text, styled to sit naturally in the dark header
+   — dark input surface, light readable text, and a clear focus ring
+   so it's obvious this is editable and where keyboard focus is. */
+.workflow-builder-page__name-input {
+  font: inherit;
   font-size: 16px;
   font-weight: 600;
-  color: #1f2328;
+  color: #f9fafb;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px 10px;
+  min-width: 0;
+  flex: 1;
+  max-width: 420px;
 }
 
-/* ---------- Body: panel + canvas side by side ---------- */
+.workflow-builder-page__name-input::placeholder {
+  color: #9099a8;
+}
+
+.workflow-builder-page__name-input:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.workflow-builder-page__name-input:focus {
+  outline: none;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent, #aa3bff);
+}
+
+.workflow-builder-page__header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.workflow-builder-page__save-msg {
+  font-size: 12px;
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.workflow-builder-page__dirty-msg {
+  font-size: 12px;
+  color: #fbbf24;
+  font-weight: 500;
+}
+
+.workflow-builder-page__save-btn {
+  border: none;
+  background: linear-gradient(135deg, var(--accent, #aa3bff), #8b2fd6);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.workflow-builder-page__save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ---------- Body: panel + canvas + side panel ---------- */
 
 .workflow-builder-page__body {
   flex: 1;
@@ -46,4 +160,17 @@
   flex: 1;
   min-width: 0; /* prevents canvas content from overflowing the row */
   height: 100%;
+}
+
+/* Right-hand column: node config panel (when a node is selected) on
+   top, Run Workflow panel always below it. Fixed width so the canvas
+   doesn't jump around as the config panel appears/disappears. */
+.workflow-builder-page__side {
+  width: 280px;
+  flex-shrink: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  border-left: 1px solid #e5e7eb;
 }

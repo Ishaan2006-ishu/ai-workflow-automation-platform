@@ -48,7 +48,7 @@ const getWorkflowById = async (workflowId, userId) => {
   return workflow;   // null when not found or not owned
 };
 
-const saveWorkflow = async (workflowId, userId, nodes, edges) => {
+const saveWorkflow = async (workflowId, userId, nodes, edges, name) => {
  
   // ── Step 1: Find the workflow document (Mongoose document, NOT .lean()) ──────
   //
@@ -83,6 +83,18 @@ const saveWorkflow = async (workflowId, userId, nodes, edges) => {
   // hooks active, which is the safest approach.
   workflow.nodes = nodes;
   workflow.edges = edges;
+
+  // MVP fix (Issue 1 — workflow naming): update the name in-place on the
+  // SAME document/save() call, rather than creating a new workflow or
+  // requiring a separate request. This is what makes "rename + Save"
+  // update the existing workflow instead of duplicating it — the
+  // workflowId (and therefore the Mongo document) never changes, only
+  // this one field does. Only touched when a non-empty name is actually
+  // provided, so this function stays safe to call from any future
+  // caller that might not send a name.
+  if (typeof name === "string" && name.trim().length > 0) {
+    workflow.name = name.trim();
+  }
  
   // ── Step 5: Persist the changes ──────────────────────────────────────────────
   //

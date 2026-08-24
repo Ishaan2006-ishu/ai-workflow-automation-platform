@@ -17,10 +17,33 @@
  * @param {Number} status
  */
 const sendSuccess = (res, message, data = {}, status = 200) => {
+  // WHY THIS CHECK CHANGED (bugfix):
+  // The previous implementation used `Object.keys(data).length > 0` to
+  // decide whether to include the `data` key at all. That check is
+  // correct for a plain object ({} -> omit), but silently breaks for
+  // ARRAYS: Object.keys([]) is also `[]` (length 0), so an empty array
+  // — a perfectly valid, meaningful result (e.g. "this user has zero
+  // workflows") — was being dropped from the response entirely. The
+  // frontend then received a response with no `data` field at all,
+  // read `response.data` as `undefined`, and crashed on `.length` /
+  // `.map()`. This is almost certainly the source of the intermittent
+  // "GET /api/workflows" failure noted during frontend debugging.
+  //
+  // The fix: only fall back to omitting `data` for the untouched
+  // default value ({}), by checking against the actual reference we
+  // just declared. Every other value the caller explicitly passes in
+  // — including [], 0, false, or "" — is included as-is.
+  const hasExplicitData = data !== undefined && !(
+    typeof data === "object" &&
+    data !== null &&
+    !Array.isArray(data) &&
+    Object.keys(data).length === 0
+  );
+
   return res.status(status).json({
     success: true,
     message,
-    data,
+    ...(hasExplicitData && { data }),
   });
 };
 

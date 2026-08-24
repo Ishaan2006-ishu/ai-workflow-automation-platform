@@ -124,13 +124,20 @@ const saveWorkflow = async (req, res) => {
     const workflowId = req.params.id;
     const userId = req.user.userId;
 
-    const { nodes, edges } = req.body;
+    // MVP fix (Issue 1 — workflow naming): `name` is now accepted here
+    // alongside nodes/edges. Previously this endpoint silently dropped
+    // any name the client sent, so a renamed workflow always reverted
+    // to whatever name it was created with. Optional at this layer —
+    // validateSaveWorkflow enforces it's present and well-formed before
+    // this handler ever runs.
+    const { nodes, edges, name } = req.body;
 
     const result = await saveWorkflowService(
       workflowId,
       userId,
       nodes,
-      edges
+      edges,
+      name
     );
 
     return sendSuccess(

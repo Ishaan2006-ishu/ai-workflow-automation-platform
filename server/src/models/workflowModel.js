@@ -11,28 +11,26 @@
  * Architecture: Model layer — no business logic lives here.
  */
 
-const mongoose = require("mongoose");
+const mongoose =require( "mongoose");
 
 const { Schema, model } = mongoose;
 
 /* ─────────────────────────────────────────────
  * SUB-SCHEMA: Position
+ * Stores the (x, y) coordinates of a node on
+ * the visual canvas. Used exclusively inside
+ * the NodeSchema.
  * ───────────────────────────────────────────── */
-
 const PositionSchema = new Schema(
   {
-    /**
-     * Horizontal offset in pixels from the canvas origin.
-     */
+    /** Horizontal offset in pixels from the canvas origin */
     x: {
       type: Number,
       required: true,
       default: 0,
     },
 
-    /**
-     * Vertical offset in pixels from the canvas origin.
-     */
+    /** Vertical offset in pixels from the canvas origin */
     y: {
       type: Number,
       required: true,
@@ -40,23 +38,28 @@ const PositionSchema = new Schema(
     },
   },
   {
-    /**
-     * Position is an embedded object.
-     * We do not need a separate MongoDB _id for it.
-     */
+    /** Suppress auto-generated _id for embedded sub-documents */
     _id: false,
   }
 );
 
 /* ─────────────────────────────────────────────
  * SUB-SCHEMA: Node
+ * Represents a single processing unit (step) in
+ * the workflow graph. Each node maps to an action
+ * the engine will execute (e.g. HTTP request,
+ * AI call, data transform, conditional branch).
+ *
+ * The `id` field is a client-generated string ID
+ * (e.g. from React Flow) so it can be referenced
+ * by edges without relying on MongoDB ObjectIds.
  * ───────────────────────────────────────────── */
-
 const NodeSchema = new Schema(
   {
     /**
      * Client-generated unique identifier for this node.
      * Referenced by EdgeSchema.source and EdgeSchema.target.
+     * Example: "node_1", "trigger-abc123"
      */
     id: {
       type: String,
@@ -65,13 +68,9 @@ const NodeSchema = new Schema(
     },
 
     /**
-     * Tells the engine which handler should execute this node.
-     *
-     * Examples:
-     * "start"
-     * "ai"
-     * "condition"
-     * "notification"
+     * Discriminator that tells the engine which handler to invoke.
+     * Examples: "trigger", "httpRequest", "aiPrompt",
+     *           "condition", "dataTransform", "output"
      */
     type: {
       type: String,
@@ -80,7 +79,8 @@ const NodeSchema = new Schema(
     },
 
     /**
-     * Canvas coordinates used by React Flow.
+     * Canvas coordinates for rendering the node in the UI.
+     * Has no effect on engine execution.
      */
     position: {
       type: PositionSchema,
@@ -89,11 +89,11 @@ const NodeSchema = new Schema(
     },
 
     /**
-     * Configuration specific to the node type.
-     *
-     * Example:
-     * condition node:
-     * { condition: "contains_positive" }
+     * Arbitrary configuration payload for this node.
+     * Contents vary by node type — validated at the
+     * service/engine layer, not at the schema level.
+     * Example for "httpRequest": { url, method, headers, body }
+     * Example for "aiPrompt":    { model, prompt, temperature }
      */
     data: {
       type: Schema.Types.Mixed,
@@ -101,21 +101,24 @@ const NodeSchema = new Schema(
     },
   },
   {
-    /**
-     * Nodes already have their own client-generated id.
-     */
-    _id: false,
+    _id: false, // Nodes are identified by their `id` string field
   }
 );
 
 /* ─────────────────────────────────────────────
  * SUB-SCHEMA: Edge
+ * Represents a directed connection (arrow) between
+ * two nodes in the workflow graph. The engine follows
+ * edges to determine execution order.
+ *
+ * `source` and `target` map to NodeSchema.id values,
+ * not to MongoDB ObjectIds.
  * ───────────────────────────────────────────── */
-
 const EdgeSchema = new Schema(
   {
     /**
      * Client-generated unique identifier for this edge.
+     * Example: "edge_1", "edge-node1-node2"
      */
     id: {
       type: String,
@@ -124,7 +127,8 @@ const EdgeSchema = new Schema(
     },
 
     /**
-     * ID of the node where this edge starts.
+     * `id` of the Node where this edge originates (output handle).
+     * Must correspond to an existing NodeSchema.id in the same workflow.
      */
     source: {
       type: String,
@@ -133,43 +137,50 @@ const EdgeSchema = new Schema(
     },
 
     /**
-     * ID of the specific source handle.
-     *
-     * Normal nodes may not need this.
-     *
-     * Condition nodes use:
-     * "true"
-     * "false"
-     *
-     * This value comes from React Flow's sourceHandle.
-     */
-    sourceHandle: {
-      type: String,
-      trim: true,
-      default: null,
-    },
-
-    /**
-     * ID of the node where this edge ends.
+     * `id` of the Node where this edge terminates (input handle).
+     * Must correspond to an existing NodeSchema.id in the same workflow.
      */
     target: {
       type: String,
       required: true,
       trim: true,
     },
+
+    /**
+     * Optional identifier of the SPECIFIC output handle on the source
+     * node this edge starts from. Only meaningful for node types with
+     * more than one output (currently: "condition" nodes, which expose
+     * a "true" and a "false" handle).
+     *
+     * WHY THIS IS NEEDED FOR THE ENGINE:
+     * A condition node can have two outgoing edges (one per branch).
+     * Without recording which handle each edge came from, the engine
+     * has no way to know which edge represents the TRUE branch and
+     * which represents the FALSE branch when deciding where to go
+     * next. React Flow already tracks this client-side as
+     * `sourceHandle` on every edge object — we simply persist it.
+     *
+     * Left null/undefined for nodes with a single output (start, ai,
+     * notification), where there is nothing to disambiguate.
+     */
+    sourceHandle: {
+      type: String,
+      default: null,
+      trim: true,
+    },
   },
   {
-    /**
-     * Edges already have their own client-generated id.
-     */
-    _id: false,
+    _id: false, // Edges are identified by their `id` string field
   }
 );
 
 /* ─────────────────────────────────────────────
  * MAIN SCHEMA: Workflow
+ * Top-level document stored in the `workflows`
+ * collection. Owned by a single User and contains
+ * the full graph definition (nodes + edges) along
+ * with display metadata (name).
  * ───────────────────────────────────────────── */
-
 const WorkflowSchema = new Schema(
   {
     /**
@@ -180,11 +191,13 @@ const WorkflowSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
+      index: true, // Common query pattern: find all workflows by user
     },
 
     /**
-     * Human-readable workflow name.
+     * Human-readable label for the workflow.
+     * Displayed in the dashboard and used for search.
+     * Example: "Lead Enrichment Pipeline", "Daily Report Generator"
      */
     name: {
       type: String,
@@ -194,10 +207,9 @@ const WorkflowSchema = new Schema(
     },
 
     /**
-     * Nodes that make up the workflow.
-     *
-     * Execution order is determined by edges,
-     * not by array position.
+     * Ordered collection of processing units in the workflow graph.
+     * The engine resolves execution order via the edges array, not
+     * the array index, so insertion order is not significant.
      */
     nodes: {
       type: [NodeSchema],
@@ -205,7 +217,9 @@ const WorkflowSchema = new Schema(
     },
 
     /**
-     * Connections between workflow nodes.
+     * Directed connections between nodes.
+     * Together with `nodes`, these define the full DAG
+     * (Directed Acyclic Graph) that the engine traverses.
      */
     edges: {
       type: [EdgeSchema],
@@ -214,18 +228,30 @@ const WorkflowSchema = new Schema(
   },
   {
     /**
-     * Automatically creates:
-     * createdAt
-     * updatedAt
+     * Automatically manages `createdAt` and `updatedAt` fields.
+     * `updatedAt` is refreshed on every save/update operation,
+     * making it useful for cache invalidation and audit trails.
      */
     timestamps: true,
+
+   
   }
 );
 
 /* ─────────────────────────────────────────────
- * MODEL EXPORT
+ * INDEXES
+ * Compound index on (userId, name) supports fast
+ * lookup when checking for duplicate workflow names
+ * within the same user's account.
  * ───────────────────────────────────────────── */
 
+
+/* ─────────────────────────────────────────────
+ * MODEL EXPORT
+ * Exported as a named constant so the service
+ * layer can import it directly:
+ *   import Workflow from "../models/workflowModel.js";
+ * ───────────────────────────────────────────── */
 const Workflow = model("Workflow", WorkflowSchema);
 
-module.exports = Workflow;
+module.exports= Workflow;

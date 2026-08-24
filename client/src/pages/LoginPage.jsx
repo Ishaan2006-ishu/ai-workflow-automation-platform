@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { login as loginApi } from "../api/authApi";
 import useAuth from "../hooks/useAuth";
+import "./AuthPage.css";
 
 const LoginPage = () => {
   const navigate = useNavigate();
