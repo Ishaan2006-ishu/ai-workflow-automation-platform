@@ -21,7 +21,7 @@ import axios from "axios";
 // its OWN resource path onto this base.
 // Example: authApi.js will call apiClient.post("/auth/login", ...)
 //          workflowApi.js will call apiClient.get("/workflows", ...)
-const BASE_URL = "http://localhost:5000/api";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 // axios.create() returns a NEW axios instance with its own default
 // settings, separate from the global "axios" object. This means other
